@@ -1,0 +1,291 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type {
+  Food,
+  FoodLog,
+  Profile,
+  ScanResult,
+  TodayPayload,
+  WaterLog,
+  WeightEntry,
+  Workout,
+} from "./types";
+
+/* ---------- helpers ---------- */
+
+export function localDayStr(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+async function jget<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`GET ${url} failed`);
+  return res.json();
+}
+async function jsend<T>(url: string, method: string, body?: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body != null ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw Object.assign(new Error((data as { message?: string }).message ?? "request failed"), {
+      payload: data,
+      status: res.status,
+    });
+  }
+  return data as T;
+}
+
+/* ---------- today ---------- */
+
+export function useToday() {
+  const day = localDayStr();
+  return useQuery<TodayPayload>({
+    queryKey: ["today", day],
+    queryFn: () => jget<TodayPayload>(`/api/today?date=${day}`),
+  });
+}
+
+/* ---------- profile ---------- */
+
+export function useProfile() {
+  return useQuery<Profile>({ queryKey: ["profile"], queryFn: () => jget<Profile>("/api/profile") });
+}
+
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: Record<string, unknown>) => jsend<Profile>("/api/profile", "PUT", patch),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      qc.invalidateQueries({ queryKey: ["today"] });
+      qc.invalidateQueries({ queryKey: ["progress"] });
+    },
+  });
+}
+
+/* ---------- foods ---------- */
+
+export function useFoods(q: string, fav = false) {
+  return useQuery<Food[]>({
+    queryKey: ["foods", q, fav],
+    queryFn: () => jget<Food[]>(`/api/foods?q=${encodeURIComponent(q)}&fav=${fav ? 1 : 0}`),
+  });
+}
+
+export function useToggleFavorite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, isFavorite }: { id: string; isFavorite: boolean }) =>
+      jsend<Food>(`/api/foods/${id}`, "PATCH", { isFavorite }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["foods"] }),
+  });
+}
+
+export function useCreateFood() {
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => jsend<Food>("/api/foods", "POST", body),
+  });
+}
+
+/* ---------- food logs ---------- */
+
+export interface AddLogBody {
+  name: string;
+  dayDate: string;
+  mealType: string;
+  grams: number;
+  kcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  source?: string;
+  foodId?: string | null;
+  loggedAt?: string;
+}
+
+export function useAddFoodLog() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AddLogBody) => jsend<FoodLog>("/api/food-logs", "POST", body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["today"] });
+      qc.invalidateQueries({ queryKey: ["progress"] });
+    },
+  });
+}
+
+export function useDeleteFoodLog() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => jsend<{ ok: boolean }>(`/api/food-logs/${id}`, "DELETE"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["today"] });
+      qc.invalidateQueries({ queryKey: ["progress"] });
+    },
+  });
+}
+
+/* ---------- water ---------- */
+
+export interface WaterPayload {
+  date: string;
+  total: number;
+  entries: WaterLog[];
+  week: { date: string; total: number }[];
+}
+
+export function useWater() {
+  const day = localDayStr();
+  return useQuery<WaterPayload>({
+    queryKey: ["water", day],
+    queryFn: () => jget<WaterPayload>(`/api/water?date=${day}`),
+  });
+}
+
+export function useAddWater() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (amountMl: number) =>
+      jsend<WaterLog>("/api/water", "POST", { amountMl, dayDate: localDayStr() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["water"] });
+      qc.invalidateQueries({ queryKey: ["today"] });
+      qc.invalidateQueries({ queryKey: ["progress"] });
+    },
+  });
+}
+
+export function useUndoWater() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => jsend<{ ok: boolean }>(`/api/water/${id}`, "DELETE"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["water"] });
+      qc.invalidateQueries({ queryKey: ["today"] });
+      qc.invalidateQueries({ queryKey: ["progress"] });
+    },
+  });
+}
+
+/* ---------- weight ---------- */
+
+export function useWeight() {
+  return useQuery<WeightEntry[]>({
+    queryKey: ["weight"],
+    queryFn: () => jget<WeightEntry[]>("/api/weight"),
+  });
+}
+
+export function useLogWeight() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { date: string; weightKg: number; note?: string }) =>
+      jsend<WeightEntry>("/api/weight", "POST", body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["weight"] });
+      qc.invalidateQueries({ queryKey: ["progress"] });
+      qc.invalidateQueries({ queryKey: ["today"] });
+    },
+  });
+}
+
+/* ---------- workouts ---------- */
+
+export interface WorkoutsPayload {
+  month: string;
+  workouts: Workout[];
+  stats: {
+    thisWeekCount: number;
+    streak: number;
+    counts: Record<string, number>;
+    lastTrained: Record<string, string>;
+    lastWorkoutDate: string | null;
+  };
+}
+
+export function useWorkouts(month: string) {
+  return useQuery<WorkoutsPayload>({
+    queryKey: ["workouts", month],
+    queryFn: () => jget<WorkoutsPayload>(`/api/workouts?month=${month}`),
+  });
+}
+
+export function useAddWorkout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { date: string; muscleGroups: string[]; durationMin?: number; note?: string }) =>
+      jsend<Workout>("/api/workouts", "POST", body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workouts"] });
+      qc.invalidateQueries({ queryKey: ["today"] });
+    },
+  });
+}
+
+export function useUpdateWorkout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; muscleGroups?: string[]; durationMin?: number; note?: string }) =>
+      jsend<Workout>(`/api/workouts/${id}`, "PATCH", body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workouts"] });
+      qc.invalidateQueries({ queryKey: ["today"] });
+    },
+  });
+}
+
+export function useDeleteWorkout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => jsend<{ ok: boolean }>(`/api/workouts/${id}`, "DELETE"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workouts"] });
+      qc.invalidateQueries({ queryKey: ["today"] });
+    },
+  });
+}
+
+/* ---------- progress ---------- */
+
+export interface ProgressPayload {
+  profile: Profile;
+  weights: WeightEntry[];
+  dailyKcal: { date: string; kcal: number }[];
+  macroAvg: { protein: number; carbs: number; fat: number };
+  waterAvg: number;
+  streak: number;
+  loggedDays30: number;
+}
+
+export function useProgress() {
+  return useQuery<ProgressPayload>({
+    queryKey: ["progress"],
+    queryFn: () => jget<ProgressPayload>("/api/progress"),
+  });
+}
+
+/* ---------- scan ---------- */
+
+export function useScan() {
+  return useMutation({
+    mutationFn: (body: { labelImage?: string; frontImage?: string; demo?: boolean }) =>
+      jsend<ScanResult>("/api/scan", "POST", body),
+  });
+}
+
+/* ---------- demo reset ---------- */
+
+export function useDemoReset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => jsend<{ ok: boolean }>("/api/demo/reset", "POST"),
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}

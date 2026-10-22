@@ -1,0 +1,231 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-arabic), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-inter), ui-monospace, monospace;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  /* Nutra semantic colors */
+  --color-protein: var(--protein);
+  --color-carbs: var(--carbs);
+  --color-fat: var(--fat);
+  --color-water: var(--water);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-surface-muted: var(--surface-muted);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 1rem;
+  /* iOS-style airy light theme */
+  --background: #f4f6f8;
+  --foreground: #101828;
+  --card: #ffffff;
+  --card-foreground: #101828;
+  --popover: #ffffff;
+  --popover-foreground: #101828;
+  --primary: #10b981;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2f6;
+  --secondary-foreground: #344054;
+  --muted: #eef2f6;
+  --muted-foreground: #667085;
+  --accent: #e9f9f1;
+  --accent-foreground: #047857;
+  --destructive: #f04438;
+  --border: #e7ecf1;
+  --input: #e2e8ef;
+  --ring: #10b981;
+  --chart-1: #10b981;
+  --chart-2: #f59e0b;
+  --chart-3: #f97066;
+  --chart-4: #14b8a6;
+  --chart-5: #8b5cf6;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #101828;
+  --sidebar-primary: #10b981;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e9f9f1;
+  --sidebar-accent-foreground: #047857;
+  --sidebar-border: #e7ecf1;
+  --sidebar-ring: #10b981;
+  /* macro / semantic */
+  --protein: #22c55e;
+  --carbs: #f59e0b;
+  --fat: #f97066;
+  --water: #14b8a6;
+  --positive: #12b76a;
+  --negative: #f04438;
+  --surface-muted: #f2f5f8;
+}
+
+.dark {
+  --background: #0b1210;
+  --foreground: #eef4f1;
+  --card: #141d19;
+  --card-foreground: #eef4f1;
+  --popover: #141d19;
+  --popover-foreground: #eef4f1;
+  --primary: #10b981;
+  --primary-foreground: #052e21;
+  --secondary: #1c2721;
+  --secondary-foreground: #c5d5cd;
+  --muted: #1c2721;
+  --muted-foreground: #8ca39a;
+  --accent: #123529;
+  --accent-foreground: #6ee7b7;
+  --destructive: #f04438;
+  --border: #22302a;
+  --input: #22302a;
+  --ring: #10b981;
+  --chart-1: #10b981;
+  --chart-2: #f59e0b;
+  --chart-3: #f97066;
+  --chart-4: #14b8a6;
+  --chart-5: #8b5cf6;
+  --sidebar: #141d19;
+  --sidebar-foreground: #eef4f1;
+  --sidebar-primary: #10b981;
+  --sidebar-primary-foreground: #052e21;
+  --sidebar-accent: #123529;
+  --sidebar-accent-foreground: #6ee7b7;
+  --sidebar-border: #22302a;
+  --sidebar-ring: #10b981;
+  --protein: #34d399;
+  --carbs: #fbbf24;
+  --fat: #fb8a84;
+  --water: #2dd4bf;
+  --positive: #34d399;
+  --negative: #f97066;
+  --surface-muted: #17211c;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Language-aware font stacks */
+  html[lang="ar"] body {
+    font-family: var(--font-arabic), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  }
+  html[lang="en"] body {
+    font-family: var(--font-inter), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
+  }
+}
+
+/* ---------- Nutra utilities ---------- */
+
+.nutra-card {
+  background: var(--card);
+  border-radius: 22px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px rgba(16, 24, 40, 0.05);
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+.dark .nutra-card {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.25);
+  border-color: color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.nutra-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.nutra-hero-num {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* tabular numbers everywhere data is shown */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* hide number input spinners for clean iOS look */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* slim custom scrollbar */
+.nutra-scroll::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.nutra-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted-foreground) 35%, transparent);
+  border-radius: 999px;
+}
+.nutra-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* safe-area helpers */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top), 0px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
