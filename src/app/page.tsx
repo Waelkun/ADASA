@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Settings, Moon, SunMedium } from "lucide-react";
+import { Settings, Moon, SunMedium, Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useI18n } from "@/lib/i18n";
 import { useAppStore } from "@/lib/store";
@@ -12,6 +12,7 @@ import { BottomNav } from "@/components/nutra/bottom-nav";
 import { TodayScreen } from "@/components/nutra/screens/today";
 import { LogScreen } from "@/components/nutra/screens/log";
 import { ProgressScreen } from "@/components/nutra/screens/progress";
+import { GoalsScreen } from "@/components/nutra/screens/goals";
 import { WorkoutsScreen } from "@/components/nutra/screens/workouts";
 import { SettingsScreen } from "@/components/nutra/screens/settings";
 import { QuickAddSheet, WaterSheet, WeightSheet } from "@/components/nutra/sheets/quick-sheets";
@@ -19,6 +20,8 @@ import { WorkoutSheet } from "@/components/nutra/sheets/workout-sheet";
 import { ScanSheet } from "@/components/nutra/sheets/scan-sheet";
 import { FoodConfirmSheet } from "@/components/nutra/sheets/food-confirm-sheet";
 import { MealBuilderSheet } from "@/components/nutra/sheets/meal-builder-sheet";
+import { OnboardingScreen } from "@/components/nutra/onboarding";
+import { Splash, useColdStart } from "@/components/nutra/splash";
 import { kcalSanityOk } from "@/lib/nutrition";
 
 const BLANK_MANUAL: PendingFood = {
@@ -85,6 +88,14 @@ export default function NutraApp() {
   );
 }
 
+function BootLoader() {
+  return (
+    <div className="fixed inset-0 z-50 bg-background grid place-items-center">
+      <Loader2 className="size-10 text-primary animate-spin" strokeWidth={2} />
+    </div>
+  );
+}
+
 function AppShell() {
   const { t } = useI18n();
   const { theme, setTheme } = useTheme();
@@ -92,9 +103,36 @@ function AppShell() {
   const setTab = useAppStore((s) => s.setTab);
   const sheet = useAppStore((s) => s.sheet);
   const closeSheet = useAppStore((s) => s.closeSheet);
-  const { data: today } = useToday();
+  const { data: today, isLoading } = useToday();
 
   const [pendingFood, setPendingFood] = useState<PendingFood | null>(null);
+
+  // cold-start splash: ≥1.6s AND profile readiness (cap 6s), refresh skips it
+  const [splashOff, setSplashOff] = useState(false);
+  const coldStart = useColdStart();
+  const splashReady = !isLoading && !!today?.profile;
+  const splash = coldStart && !splashOff ? (
+    <Splash ready={splashReady} onDone={() => setSplashOff(true)} />
+  ) : null;
+
+  // wait for the profile to load before routing — onboarding decision
+  // (persisted on the profile, so an immediate refresh keeps showing it)
+  if (isLoading) {
+    return (
+      <>
+        {splash}
+        <BootLoader />
+      </>
+    );
+  }
+  if (today?.profile && !today.profile.onboardingCompleted) {
+    return (
+      <>
+        {splash}
+        <OnboardingScreen />
+      </>
+    );
+  }
 
   const isManual = sheet === "manual-food";
   const confirmOpen = pendingFood != null || isManual;
@@ -113,14 +151,17 @@ function AppShell() {
       ? `${greeting} ${today?.profile?.displayName ? "، " + today.profile.displayName : ""} 👋`
       : tab === "log"
         ? t("food_log")
-        : tab === "progress"
-          ? t("progress")
-          : tab === "workouts"
-            ? t("workouts")
-            : t("settings");
+        : tab === "goals"
+          ? t("tab_goals")
+          : tab === "progress"
+            ? t("progress")
+            : tab === "workouts"
+              ? t("workouts")
+              : t("settings");
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-dvh bg-background flex flex-col">
+      {splash}
       {/* header */}
       <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-xl pt-safe">
         <div className="mx-auto max-w-md px-4 h-16 flex items-center gap-2">
@@ -145,17 +186,20 @@ function AppShell() {
 
       {/* screens */}
       <main className="flex-1 mx-auto w-full max-w-md px-4 pb-32">
-        {tab === "today" && <TodayScreen />}
-        {tab === "log" && (
-          <LogScreen
-            onPickFood={(f) => {
-              setPendingFood(f);
-            }}
-          />
-        )}
-        {tab === "progress" && <ProgressScreen />}
-        {tab === "workouts" && <WorkoutsScreen />}
-        {tab === "settings" && <SettingsScreen />}
+        <div key={tab} className="nutra-anim-in">
+          {tab === "today" && <TodayScreen />}
+          {tab === "log" && (
+            <LogScreen
+              onPickFood={(f) => {
+                setPendingFood(f);
+              }}
+            />
+          )}
+          {tab === "progress" && <ProgressScreen />}
+          {tab === "goals" && <GoalsScreen />}
+          {tab === "workouts" && <WorkoutsScreen />}
+          {tab === "settings" && <SettingsScreen />}
+        </div>
       </main>
 
       <BottomNav />

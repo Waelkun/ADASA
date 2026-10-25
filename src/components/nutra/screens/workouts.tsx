@@ -40,7 +40,7 @@ export function groupLabelKey(g: string): string {
 }
 
 export function WorkoutsScreen() {
-  const { t, nf, lang } = useI18n();
+  const { t, nf, df } = useI18n();
   const openSheet = useAppStore((s) => s.openSheet);
   const today = new Date();
   const [cursor, setCursor] = useState({
@@ -69,12 +69,10 @@ export function WorkoutsScreen() {
       arr.push(`${cursor.y}-${String(cursor.m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
     }
     while (arr.length % 7 !== 0) arr.push(null);
-    const label = first.toLocaleDateString(lang === "ar" ? "ar-SY-u-nu-latn" : "en-US", {
-      month: "long",
-      year: "numeric",
-    });
+    // modern Arabic months ("أكتوبر 2026") — lib/date-ar.ts via i18n df
+    const label = df(first, { month: "long", year: "numeric" });
     return { cells: arr, monthLabel: label };
-  }, [cursor, lang]);
+  }, [cursor, df]);
 
   const dayNames = useMemo(() => {
     // Saturday-first week
@@ -82,11 +80,9 @@ export function WorkoutsScreen() {
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(base);
       d.setDate(base.getDate() + i);
-      return d.toLocaleDateString(lang === "ar" ? "ar-SY-u-nu-latn" : "en-US", {
-        weekday: "short",
-      });
+      return df(d, { weekday: "short" });
     });
-  }, [lang]);
+  }, [df]);
 
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
     today.getDate()
@@ -138,10 +134,7 @@ export function WorkoutsScreen() {
           {stats?.lastWorkoutDate && (
             <span className="text-xs font-medium text-muted-foreground">
               {t("last_trained")}:{" "}
-              {new Date(stats.lastWorkoutDate + "T00:00:00").toLocaleDateString(
-                lang === "ar" ? "ar-SY-u-nu-latn" : "en-US",
-                { day: "numeric", month: "short" }
-              )}
+              {df(new Date(stats.lastWorkoutDate + "T00:00:00"), { day: "numeric", month: "short" })}
             </span>
           )}
         </div>
@@ -245,10 +238,7 @@ export function WorkoutsScreen() {
                 <span className="text-xs font-bold tabular w-5 text-end">{nf(count)}</span>
                 <span className="text-[10px] text-muted-foreground w-14 text-end shrink-0 truncate">
                   {last
-                    ? new Date(last + "T00:00:00").toLocaleDateString(
-                        lang === "ar" ? "ar-SY-u-nu-latn" : "en-US",
-                        { day: "numeric", month: "numeric" }
-                      )
+                    ? df(new Date(last + "T00:00:00"), { day: "numeric", month: "numeric" })
                     : t("never")}
                 </span>
               </li>

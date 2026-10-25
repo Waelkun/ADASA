@@ -39,12 +39,17 @@ export async function PUT(req: NextRequest) {
         carbsG: num(body.carbsG, 0, 800, 190),
         fatG: num(body.fatG, 10, 300, 70),
         waterGoalMl: num(body.waterGoalMl, 500, 8000, 2800),
+        // undefined = not provided (leave as-is); null/"" = explicit clear
         goalWeightKg:
-          body.goalWeightKg == null || body.goalWeightKg === ""
-            ? null
-            : num(body.goalWeightKg, 30, 300, 78),
+          body.goalWeightKg === undefined
+            ? undefined
+            : body.goalWeightKg == null || body.goalWeightKg === ""
+              ? null
+              : num(body.goalWeightKg, 30, 300, 78),
         workoutsPerWeek: num(body.workoutsPerWeek, 1, 7, 4),
         units: body.units === "imperial" ? "imperial" : "metric",
+        // welcome screen completion (only ever set to true here)
+        onboardingCompleted: body.onboardingCompleted === true ? true : undefined,
       },
     });
     return Response.json(updated);

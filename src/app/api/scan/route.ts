@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     // optional user hint (description / weight) — treated as trusted by the model
     const note: string | null =
       typeof body?.note === "string" && body.note.trim()
-        ? body.note.trim().slice(0, 300)
+        ? body.note.trim().slice(0, 500)
         : null;
 
     // demo mode: use bundled sample product images (still runs through the real AI)

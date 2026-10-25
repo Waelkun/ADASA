@@ -69,7 +69,7 @@ export function QuickAddSheet() {
           <li key={it.label}>
             <button
               onClick={it.onClick}
-              className="w-full flex items-center gap-4 p-3 rounded-[20px] hover:bg-secondary/70 active:scale-[0.98] transition-all text-start min-h-[44px]"
+              className="w-full flex items-center gap-4 p-3 rounded-[20px] hover:bg-secondary/70 active:scale-[0.97] transition-all text-start min-h-[44px]"
             >
               <span className={`size-11 rounded-2xl grid place-items-center shrink-0 ${it.color}`}>
                 <it.icon className="size-5" />
@@ -138,7 +138,7 @@ export function WaterSheet() {
           inputMode="numeric"
           placeholder={t("custom_amount")}
           aria-label={t("custom_amount")}
-          className="flex-1 h-12 rounded-full bg-secondary px-5 text-sm font-semibold tabular focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="flex-1 h-12 rounded-full bg-secondary px-5 text-base font-semibold tabular focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
         <button
           onClick={() => {
@@ -291,13 +291,13 @@ function WeightForm({
         onChange={(e) => setNote(e.target.value)}
         placeholder={t("weight_note")}
         aria-label={t("weight_note")}
-        className="w-full h-12 rounded-full bg-secondary px-5 text-sm font-medium mb-4 focus:outline-none focus:ring-2 focus:ring-primary/40"
+        className="w-full h-12 rounded-full bg-secondary px-5 text-base font-medium mb-4 focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
 
       <button
         onClick={save}
         disabled={logWeight.isPending}
-        className="w-full h-14 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
+        className="w-full h-14 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.97] transition-transform disabled:opacity-60"
       >
         {t("save")}
       </button>

@@ -58,7 +58,7 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <body
-        className={`${plexArabic.variable} ${inter.variable} antialiased bg-background text-foreground min-h-screen`}
+        className={`${plexArabic.variable} ${inter.variable} antialiased bg-background text-foreground min-h-dvh`}
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <I18nProvider>{children}</I18nProvider>

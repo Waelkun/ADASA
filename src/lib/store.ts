@@ -14,8 +14,13 @@ export type SheetKind =
   | "weight"
   | "workout";
 
+/** tabs that live in the main bottom dock */
+const NAV_TABS: TabId[] = ["today", "log", "goals", "progress", "workouts"];
+
 interface QuickAddState {
   tab: TabId;
+  /** last main-nav tab — the nav bubble stays here while Settings is open */
+  lastNavTab: TabId;
   sheet: SheetKind;
   /** target date for workout sheet */
   workoutDate: string | null;
@@ -31,11 +36,17 @@ interface QuickAddState {
 
 export const useAppStore = create<QuickAddState>((set) => ({
   tab: "today",
+  lastNavTab: "today",
   sheet: null,
   workoutDate: null,
   selectedDay: null,
   sheetMeal: null,
-  setTab: (tab) => set({ tab, sheet: null }),
+  setTab: (tab) =>
+    set((s) => ({
+      tab,
+      sheet: null,
+      lastNavTab: NAV_TABS.includes(tab) ? tab : s.lastNavTab,
+    })),
   openSheet: (sheet, opts) =>
     set({ sheet, workoutDate: opts?.workoutDate ?? null, sheetMeal: opts?.mealType ?? null }),
   closeSheet: () => set({ sheet: null }),

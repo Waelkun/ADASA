@@ -139,7 +139,7 @@ function SettingsForm({ profile }: { profile: Profile }) {
           <input
             value={form.displayName}
             onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
-            className="h-12 rounded-2xl bg-secondary px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="h-12 rounded-2xl bg-secondary px-4 text-base font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </label>
 
@@ -299,7 +299,7 @@ function SettingsForm({ profile }: { profile: Profile }) {
       <button
         onClick={save}
         disabled={update.isPending}
-        className="h-14 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.98] transition-transform disabled:opacity-60 shadow-lg shadow-primary/25 sticky bottom-24"
+        className="h-14 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.97] transition-transform disabled:opacity-60 shadow-lg shadow-primary/25 sticky bottom-24"
       >
         {update.isPending ? "…" : t("save")}
       </button>
@@ -370,7 +370,7 @@ function NumStepper({
           if (Number.isFinite(n)) onChange(clamp(n));
         }}
         inputMode="decimal"
-        className="w-14 text-center text-sm font-bold tabular bg-transparent focus:outline-none"
+        className="w-14 text-center text-base font-bold tabular bg-transparent focus:outline-none"
         aria-label="value"
       />
       <button
@@ -406,7 +406,7 @@ function NumField({
             if (Number.isFinite(n)) onChange(n);
           }}
           inputMode="numeric"
-          className="w-full h-12 rounded-2xl bg-secondary px-3 text-sm font-bold tabular text-center focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="w-full h-12 rounded-2xl bg-secondary px-3 text-base font-bold tabular text-center focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
         {unit && (
           <span className="absolute end-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground pointer-events-none">

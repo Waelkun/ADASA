@@ -189,7 +189,7 @@ function EditGramsForm({ log, onClose }: { log: FoodLog; onClose: () => void }) 
       <button
         onClick={save}
         disabled={updateLog.isPending}
-        className="w-full h-14 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.98] transition-transform disabled:opacity-60 shadow-lg shadow-primary/25"
+        className="w-full h-14 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.97] transition-transform disabled:opacity-60 shadow-lg shadow-primary/25"
       >
         {t("save")}
       </button>

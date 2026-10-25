@@ -26,7 +26,7 @@ export function LogScreen({ onPickFood }: { onPickFood: (f: PendingFood) => void
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => openSheet("scan")}
-          className="nutra-card p-4 flex flex-col items-start gap-2 text-start active:scale-[0.98] transition-transform"
+          className="nutra-card p-4 flex flex-col items-start gap-2 text-start active:scale-[0.97] transition-transform"
         >
           <span className="size-10 rounded-2xl bg-primary/12 text-primary grid place-items-center">
             <ScanLine className="size-5" />
@@ -36,7 +36,7 @@ export function LogScreen({ onPickFood }: { onPickFood: (f: PendingFood) => void
         </button>
         <button
           onClick={() => openSheet("manual-food")}
-          className="nutra-card p-4 flex flex-col items-start gap-2 text-start active:scale-[0.98] transition-transform"
+          className="nutra-card p-4 flex flex-col items-start gap-2 text-start active:scale-[0.97] transition-transform"
         >
           <span className="size-10 rounded-2xl bg-carbs/12 text-carbs grid place-items-center">
             <PencilLine className="size-5" />
@@ -54,7 +54,7 @@ export function LogScreen({ onPickFood }: { onPickFood: (f: PendingFood) => void
           onChange={(e) => setQ(e.target.value)}
           placeholder={t("search_foods")}
           aria-label={t("search_foods")}
-          className="w-full h-13 rounded-[22px] bg-card border border-border ps-11 pe-4 text-sm font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+          className="w-full h-13 rounded-[22px] bg-card border border-border ps-11 pe-4 text-base font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
         />
       </div>
 

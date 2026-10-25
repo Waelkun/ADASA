@@ -24,6 +24,8 @@ model Profile {
   goalWeightKg   Float?
   workoutsPerWeek Int     @default(4)
   units          String   @default("metric") // metric | imperial
+  // additive (nullable): welcome screen shown once per account; null = not shown yet
+  onboardingCompleted Boolean?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

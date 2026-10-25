@@ -204,7 +204,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
                   onChange={(e) => setBrand(e.target.value)}
                   placeholder={t("brand")}
                   aria-label={t("brand")}
-                  className="w-full h-11 rounded-full bg-secondary px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full h-11 rounded-full bg-secondary px-4 text-base font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
             ) : (
@@ -249,7 +249,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
                         setPer100((v) => ({ ...v, [key]: Number.isFinite(n) ? n : 0 }));
                       }}
                       inputMode="decimal"
-                      className="h-11 rounded-xl bg-secondary text-center text-sm font-bold tabular focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="h-11 rounded-xl bg-secondary text-center text-base font-bold tabular focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </label>
                 ))}
@@ -430,7 +430,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
       <button
         onClick={submit}
         disabled={addLog.isPending || createFood.isPending}
-        className="w-full h-14 mt-4 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.98] transition-transform disabled:opacity-60 shadow-lg shadow-primary/25"
+        className="w-full h-14 mt-4 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.97] transition-transform disabled:opacity-60 shadow-lg shadow-primary/25"
       >
         {t("add_to_log")}
       </button>

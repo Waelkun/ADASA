@@ -2,7 +2,7 @@
 
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 export type SourceType = "scan" | "manual" | "myfoods";
-export type TabId = "today" | "log" | "progress" | "workouts" | "settings";
+export type TabId = "today" | "log" | "goals" | "progress" | "workouts" | "settings";
 
 export interface Profile {
   id: number;
@@ -20,6 +20,8 @@ export interface Profile {
   goalWeightKg: number | null;
   workoutsPerWeek: number;
   units: string;
+  /** null = welcome screen not completed yet (additive, old rows may lack it) */
+  onboardingCompleted?: boolean | null;
 }
 
 export interface Food {

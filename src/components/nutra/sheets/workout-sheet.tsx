@@ -45,7 +45,7 @@ export function WorkoutSheet() {
 }
 
 function WorkoutForm({ date, existing }: { date: string; existing: Workout | null }) {
-  const { t } = useI18n();
+  const { t, df } = useI18n();
   const closeSheet = useAppStore((s) => s.closeSheet);
 
   const [groups, setGroups] = useState<string[]>(existing?.muscleGroups ?? []);
@@ -95,7 +95,7 @@ function WorkoutForm({ date, existing }: { date: string; existing: Workout | nul
   return (
     <div className="flex flex-col">
       <p className="text-center text-xs text-muted-foreground -mt-2 mb-4">
-        {new Date(date + "T00:00:00").toLocaleDateString("ar-SY-u-nu-latn", {
+        {df(new Date(date + "T00:00:00"), {
           weekday: "long",
           day: "numeric",
           month: "long",
@@ -150,7 +150,7 @@ function WorkoutForm({ date, existing }: { date: string; existing: Workout | nul
           inputMode="numeric"
           placeholder={t("duration_min")}
           aria-label={t("duration_min")}
-          className="flex-1 h-12 rounded-full bg-secondary px-5 text-sm font-semibold tabular focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="flex-1 h-12 rounded-full bg-secondary px-5 text-base font-semibold tabular focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
       </div>
       <input
@@ -158,7 +158,7 @@ function WorkoutForm({ date, existing }: { date: string; existing: Workout | nul
         onChange={(e) => setNote(e.target.value)}
         placeholder={t("workout_note")}
         aria-label={t("workout_note")}
-        className="w-full h-12 rounded-full bg-secondary px-5 text-sm font-medium mb-5 focus:outline-none focus:ring-2 focus:ring-primary/40"
+        className="w-full h-12 rounded-full bg-secondary px-5 text-base font-medium mb-5 focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
 
       <div className="flex gap-2">
@@ -181,7 +181,7 @@ function WorkoutForm({ date, existing }: { date: string; existing: Workout | nul
         <button
           onClick={save}
           disabled={addW.isPending || updateW.isPending}
-          className="flex-1 h-14 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
+          className="flex-1 h-14 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.97] transition-transform disabled:opacity-60"
         >
           {t("save")}
         </button>

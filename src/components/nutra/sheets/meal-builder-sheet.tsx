@@ -259,7 +259,7 @@ export function MealBuilderSheet() {
               onChange={(e) => setQ(e.target.value)}
               placeholder={t("search_products")}
               aria-label={t("search_products")}
-              className="w-full h-13 rounded-[22px] bg-card border border-border ps-11 pe-4 text-sm font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+              className="w-full h-13 rounded-[22px] bg-card border border-border ps-11 pe-4 text-base font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
             />
           </div>
 
@@ -294,7 +294,7 @@ export function MealBuilderSheet() {
                 <button
                   key={f.id}
                   onClick={() => addItem(f)}
-                  className="w-full flex items-center gap-3 p-2 rounded-[18px] hover:bg-secondary/70 active:scale-[0.98] transition-all text-start min-h-[56px]"
+                  className="w-full flex items-center gap-3 p-2 rounded-[18px] hover:bg-secondary/70 active:scale-[0.97] transition-all text-start min-h-[56px]"
                 >
                   <ProductThumb src={f.imageUrl} name={f.name} />
                   <span className="flex-1 min-w-0">
@@ -387,14 +387,14 @@ export function MealBuilderSheet() {
           <div className="flex gap-2">
             <button
               onClick={requestClose}
-              className="h-14 px-6 rounded-full bg-secondary text-sm font-bold text-muted-foreground active:scale-[0.98] transition-transform"
+              className="h-14 px-6 rounded-full bg-secondary text-sm font-bold text-muted-foreground active:scale-[0.97] transition-transform"
             >
               {items.length > 0 ? t("cancel") : t("close")}
             </button>
             <button
               onClick={saveMeal}
               disabled={items.length === 0 || saving}
-              className="flex-1 h-14 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.98] transition-transform disabled:opacity-40 shadow-lg shadow-primary/25 flex items-center justify-center gap-2"
+              className="flex-1 h-14 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.97] transition-transform disabled:opacity-40 shadow-lg shadow-primary/25 flex items-center justify-center gap-2"
             >
               {saving ? (
                 <span className="size-5 border-2 border-primary-foreground/40 border-t-primary-foreground rounded-full animate-spin" />

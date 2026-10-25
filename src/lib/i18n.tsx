@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { dfAr } from "./date-ar";
 
 export type Lang = "ar" | "en";
 
@@ -8,6 +9,7 @@ const dict = {
   // tabs
   tab_today: { ar: "اليوم", en: "Today" },
   tab_log: { ar: "السجل", en: "Log" },
+  tab_goals: { ar: "الأهداف", en: "Goals" },
   tab_progress: { ar: "التقدم", en: "Progress" },
   tab_workouts: { ar: "التمارين", en: "Workouts" },
   tab_settings: { ar: "الإعدادات", en: "Settings" },
@@ -47,8 +49,12 @@ const dict = {
   // ranges
   range_1w: { ar: "أسبوع", en: "1W" },
   range_1m: { ar: "شهر", en: "1M" },
-  range_3m: { ar: "٣ أشهر", en: "3M" },
+  range_3m: { ar: "3 أشهر", en: "3M" },
   range_all: { ar: "الكل", en: "All" },
+  range_custom: { ar: "مخصص", en: "Custom" },
+  date_from: { ar: "من", en: "From" },
+  date_to: { ar: "إلى", en: "To" },
+  days_count: { ar: "يوماً", en: "days" },
 
   // today
   good_morning: { ar: "صباح الخير", en: "Good morning" },
@@ -104,7 +110,7 @@ const dict = {
   next_day: { ar: "اليوم التالي", en: "Next day" },
   back_to_today: { ar: "الرجوع لليوم", en: "Back to today" },
   delete_confirm: { ar: "حذف هذا الإدخال؟", en: "Delete this entry?" },
-  per_100g: { ar: "لكل ١٠٠غ", en: "per 100g" },
+  per_100g: { ar: "لكل 100غ", en: "per 100g" },
   per_serving: { ar: "للحصة", en: "per serving" },
   serving: { ar: "حصة", en: "serving" },
   brand: { ar: "العلامة التجارية", en: "Brand" },
@@ -120,6 +126,8 @@ const dict = {
   label_photo: { ar: "صورة الملصق الغذائي", en: "Nutrition label photo" },
   label_photo_hint: { ar: "المصدر الأساسي للقيم", en: "Primary source of values" },
   take_photo: { ar: "التقاط / اختيار صورة", en: "Take / choose photo" },
+  camera: { ar: "كاميرا", en: "Camera" },
+  from_gallery: { ar: "من المعرض", en: "From gallery" },
   retake: { ar: "تغيير الصورة", en: "Retake" },
   analyze: { ar: "تحليل الملصق", en: "Analyze label" },
   analyzing: { ar: "جارٍ قراءة الملصق…", en: "Reading the label…" },
@@ -131,15 +139,15 @@ const dict = {
   low_confidence: { ar: "ثقة منخفضة — راجع القيم", en: "Low confidence — review values" },
   confidence: { ar: "الثقة", en: "Confidence" },
   scan_notes: { ar: "ملاحظات", en: "Notes" },
-  quick_50: { ar: "٥٠غ", en: "50g" },
-  quick_100: { ar: "١٠٠غ", en: "100g" },
+  quick_50: { ar: "50غ", en: "50g" },
+  quick_100: { ar: "100غ", en: "100g" },
   quick_serving: { ar: "حصة", en: "1 serving" },
   add_to_log: { ar: "أضف إلى السجل", en: "Add to log" },
   save_to_my_foods: { ar: "حفظ في أطعمتي", en: "Save to My foods" },
   scan_error_blurry: { ar: "الصورة غير واضحة — أعد التصوير بثبات", en: "Photo looks blurry — retake steadily" },
   scan_error_no_label: { ar: "لم أجد ملصقاً غذائياً في الصورة", en: "No nutrition label found in the photo" },
   scan_error_generic: { ar: "تعذّر تحليل الصورة، حاول مجدداً", en: "Could not analyze the photo, try again" },
-  scan_error_size: { ar: "الصورة كبيرة جداً (الحد ٨ ميغابايت)", en: "Image too large (max 8MB)" },
+  scan_error_size: { ar: "الصورة كبيرة جداً (الحد 8 ميغابايت)", en: "Image too large (max 8MB)" },
   try_demo: { ar: "جرّب بصورة تجريبية", en: "Try with a demo image" },
   demo_note: { ar: "صورة تجريبية", en: "Demo image" },
   scan_note_field: { ar: "وصف أو وزن تقريبي (اختياري) — مثال: شاورما 250غ", en: "Description or weight hint (optional) — e.g. shawarma 250g" },
@@ -147,8 +155,8 @@ const dict = {
   // manual entry
   manual_title: { ar: "إدخال يدوي", en: "Manual entry" },
   food_name: { ar: "اسم الطعام", en: "Food name" },
-  kcal_per_100g: { ar: "سعرات / ١٠٠غ", en: "kcal / 100g" },
-  macros_per_100g: { ar: "ماكروز / ١٠٠غ (غ)", en: "Macros / 100g (g)" },
+  kcal_per_100g: { ar: "سعرات / 100غ", en: "kcal / 100g" },
+  macros_per_100g: { ar: "ماكروز / 100غ (غ)", en: "Macros / 100g (g)" },
   grams_eaten: { ar: "الكمية المتناولة (غ)", en: "Amount eaten (g)" },
 
   // my-foods add sheet
@@ -180,7 +188,7 @@ const dict = {
   total_change: { ar: "إجمالي التغيير", en: "Total change" },
   to_goal: { ar: "المتبقي للهدف", en: "To goal" },
   goal_reached: { ar: "وصلت لهدفك 🎉", en: "Goal reached 🎉" },
-  moving_avg7: { ar: "متوسط ٧ أيام", en: "7-day average" },
+  moving_avg7: { ar: "متوسط 7 أيام", en: "7-day average" },
   no_weight_yet: { ar: "لا بيانات وزن بعد", en: "No weight data yet" },
   log_first_weight: { ar: "سجّل وزنك لعرض التقدم", en: "Log your weight to see progress" },
   avg_macros: { ar: "متوسط الماكروز", en: "Average macros" },
@@ -270,12 +278,41 @@ const dict = {
   data_reset_hint: { ar: "يعيد توليد بيانات العرض التجريبية", en: "Regenerate the demo dataset" },
   data_reset_done: { ar: "تمت إعادة التهيئة", en: "Demo data reset" },
 
+  // goals screen
+  edit_goals: { ar: "تعديل الأهداف", en: "Edit goals" },
+  goals_now: { ar: "الحالي", en: "Current" },
+  goals_left: { ar: "متبقي", en: "left" },
+  goals_weight_hint: { ar: "حدد وزن الهدف من الإعدادات", en: "Set a goal weight in Settings" },
+  goals_of: { ar: "من الهدف", en: "of goal" },
+
   // toasts
   added_toast: { ar: "تمت الإضافة إلى السجل", en: "Added to log" },
   deleted_toast: { ar: "تم الحذف", en: "Deleted" },
   saved_toast: { ar: "تم الحفظ", en: "Saved" },
   error_toast: { ar: "حدث خطأ، حاول مجدداً", en: "Something went wrong" },
   favorite_toast: { ar: "تم تحديث المفضلة", en: "Favorites updated" },
+
+  // onboarding (welcome screen)
+  onb_title: { ar: "أهلاً بك في Nutra", en: "Welcome to Nutra" },
+  onb_sub: {
+    ar: "رفيقك اليومي للسعرات والماكروز والوزن والتمارين",
+    en: "Your daily companion for calories, macros, weight and workouts",
+  },
+  onb_f1: { ar: "امسح منتجاً بالكاميرا واقرأ الملصق فوراً", en: "Scan a product and read its label instantly" },
+  onb_f2: { ar: "تابع السعرات والماكروز والماء لحظة بلحظة", en: "Track calories, macros and water live" },
+  onb_f3: { ar: "تقويم تمارين ومخطط وزن يتحرك معك", en: "Workout calendar and a weight chart that moves with you" },
+  onb_goal_q: { ar: "وش هدفك؟", en: "What's your goal?" },
+  onb_goal_sub: {
+    ar: "بنضبط أهدافك على أساسه — وتقدر تغيّره لاحقاً من الإعدادات",
+    en: "We'll shape your targets around it — changeable later in Settings",
+  },
+  onb_ready: { ar: "يلا نبدأ!", en: "Let's go!" },
+  onb_ready_sub: {
+    ar: "كل شي جاهز — اضغط ابدأ وادخل التطبيق",
+    en: "All set — tap start and dive in",
+  },
+  onb_start: { ar: "ابدأ", en: "Start" },
+  onb_back: { ar: "رجوع", en: "Back" },
 } as const;
 
 export type DictKey = keyof typeof dict;
@@ -288,7 +325,7 @@ interface I18nCtx {
   t: (key: DictKey) => string;
   /** format number with Western digits + thousands separators */
   nf: (n: number, decimals?: number) => string;
-  /** format date like "الأحد، ١٢ كانون الثاني" (western digits) */
+  /** format a date — ar: modern months + Western digits (date-ar.ts), en: en-US */
   df: (d: Date, opts?: Intl.DateTimeFormatOptions) => string;
 }
 
@@ -341,9 +378,31 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   const df = useCallback(
     (d: Date, opts: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long" }) => {
-      const locale = lang === "ar" ? "ar-SY-u-nu-latn" : "en-US";
+      if (lang === "ar") {
+        // modern Arabic months (يناير…) + Western digits — lib/date-ar.ts
+        // falls back to Intl only for unsupported options (e.g. time parts)
+        const timeParts = opts.hour != null || opts.minute != null || opts.second != null;
+        if (!timeParts) {
+          return dfAr(d, {
+            weekday: opts.weekday === "long" ? "long" : opts.weekday === "short" ? "short" : false,
+            day: opts.day === "numeric" || opts.day === "2-digit",
+            month:
+              opts.month === "long" || opts.month === "short"
+                ? "long"
+                : opts.month === "numeric" || opts.month === "2-digit"
+                  ? "numeric"
+                  : false,
+            year: !!opts.year,
+          });
+        }
+        try {
+          return new Intl.DateTimeFormat("ar-SY-u-nu-latn", opts).format(d);
+        } catch {
+          return d.toDateString();
+        }
+      }
       try {
-        return new Intl.DateTimeFormat(locale, opts).format(d);
+        return new Intl.DateTimeFormat("en-US", opts).format(d);
       } catch {
         return d.toDateString();
       }

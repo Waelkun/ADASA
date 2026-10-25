@@ -16,19 +16,26 @@ import {
 } from "recharts";
 import { TrendingDown, TrendingUp, Scale, Flame, GlassWater } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { useProgress } from "@/lib/api";
+import { useProgress, localDayStr } from "@/lib/api";
 import { Segmented } from "../segmented";
 import { HeroNumber, StatCard } from "../stat-card";
 import { MacroBar } from "../macro-donut";
 import { Skeleton } from "@/components/ui/skeleton";
 import { kgToLb } from "@/lib/nutrition";
 
-type Range = "1w" | "1m" | "3m" | "all";
-const RANGE_DAYS: Record<Range, number> = { "1w": 7, "1m": 30, "3m": 90, all: 10000 };
+type Range = "1w" | "1m" | "3m" | "all" | "custom";
+const RANGE_DAYS: Record<Exclude<Range, "custom">, number> = { "1w": 7, "1m": 30, "3m": 90, all: 10000 };
 
 export function ProgressScreen() {
-  const { t, nf, lang } = useI18n();
+  const { t, nf, df } = useI18n();
   const [range, setRange] = useState<Range>("1m");
+  // custom period (from → to), defaults to the last 30 days
+  const [custom, setCustom] = useState<{ from: string; to: string }>(() => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - 29);
+    return { from: localDayStr(from), to: localDayStr(to) };
+  });
   const { data, isLoading } = useProgress();
   const imperial = data?.profile?.units === "imperial";
 
@@ -37,10 +44,17 @@ export function ProgressScreen() {
   // weight series for range + 7d moving average
   const { series, latest, rangeDelta, minW, maxW, weeklyAvg, firstEver, totalChange } =
     useMemo(() => {
-      const cut = new Date(Date.now() - RANGE_DAYS[range] * 86400000)
-        .toISOString()
-        .slice(0, 10);
-      const inRange = weights.filter((w) => w.date >= cut);
+      const cut =
+        range === "custom"
+          ? custom.from
+          : new Date(Date.now() - RANGE_DAYS[range] * 86400000)
+              .toISOString()
+              .slice(0, 10);
+      // normalize inverted custom range (from > to)
+      const lo = custom.from <= custom.to ? custom.from : custom.to;
+      const hi = custom.from <= custom.to ? custom.to : custom.from;
+      let inRange = weights.filter((w) => w.date >= cut);
+      if (range === "custom") inRange = weights.filter((w) => w.date >= lo && w.date <= hi);
       const pts = (inRange.length > 1 ? inRange : weights).map((w) => ({
         date: w.date,
         w: w.weightKg,
@@ -71,23 +85,34 @@ export function ProgressScreen() {
         firstEver: firstEverW,
         totalChange: latestW - firstEverW,
       };
-    }, [weights, range]);
+    }, [weights, range, custom]);
 
-  // last 7 days kcal
-  const kcalWeek = useMemo(() => {
-    const arr = (data?.dailyKcal ?? []).slice(-7);
-    return arr.map((d) => ({
+  // kcal bars: last 7 days (fixed ranges) / within the custom period (last 14)
+  const { bars: kcalWeek, avg: avgKcal } = useMemo(() => {
+    let arr = data?.dailyKcal ?? [];
+    if (range === "custom") {
+      const lo = custom.from <= custom.to ? custom.from : custom.to;
+      const hi = custom.from <= custom.to ? custom.to : custom.from;
+      arr = arr.filter((d) => d.date >= lo && d.date <= hi);
+    }
+    const slice = arr.slice(range === "custom" ? -14 : -7);
+    const bars = slice.map((d) => ({
       ...d,
-      day: new Date(d.date + "T00:00:00").toLocaleDateString(lang === "ar" ? "ar-SY-u-nu-latn" : "en-US", {
-        weekday: "short",
-      }),
+      day: df(new Date(d.date + "T00:00:00"), { weekday: "short" }),
     }));
-  }, [data?.dailyKcal, lang]);
+    const avg = arr.length ? Math.round(arr.reduce((a, b) => a + b.kcal, 0) / arr.length) : 0;
+    return { bars, avg };
+  }, [data?.dailyKcal, range, custom, df]);
 
   const kcalGoal = data?.profile?.kcalGoal ?? 2100;
-  const avgKcal = kcalWeek.length
-    ? Math.round(kcalWeek.reduce((a, b) => a + b.kcal, 0) / kcalWeek.length)
-    : 0;
+
+  // custom period length in days + readable summary
+  const customDays = useMemo(() => {
+    const lo = custom.from <= custom.to ? custom.from : custom.to;
+    const hi = custom.from <= custom.to ? custom.to : custom.from;
+    const n = Math.round((new Date(hi).getTime() - new Date(lo).getTime()) / 86400000) + 1;
+    return { n: n > 0 ? n : 0, lo, hi };
+  }, [custom]);
 
   const conv = (kg: number) => (imperial ? kgToLb(kg) : kg);
   const unit = imperial ? t("lb") : t("kg");
@@ -142,8 +167,49 @@ export function ProgressScreen() {
           { value: "1m", label: t("range_1m") },
           { value: "3m", label: t("range_3m") },
           { value: "all", label: t("range_all") },
+          { value: "custom", label: t("range_custom") },
         ]}
       />
+
+      {/* custom period: from → to date pickers + readable summary */}
+      {range === "custom" && (
+        <section className="nutra-card p-4 flex flex-col gap-3" aria-label={t("range_custom")}>
+          <div className="flex items-end gap-2">
+            <label className="flex-1 flex flex-col gap-1 min-w-0">
+              <span className="text-[10px] font-bold text-muted-foreground">{t("date_from")}</span>
+              <input
+                type="date"
+                value={custom.from}
+                max={custom.to}
+                onChange={(e) => e.target.value && setCustom((c) => ({ ...c, from: e.target.value }))}
+                aria-label={t("date_from")}
+                className="h-11 rounded-[14px] bg-secondary px-3 text-base font-bold tabular focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </label>
+            <label className="flex-1 flex flex-col gap-1 min-w-0">
+              <span className="text-[10px] font-bold text-muted-foreground">{t("date_to")}</span>
+              <input
+                type="date"
+                value={custom.to}
+                min={custom.from}
+                max={localDayStr()}
+                onChange={(e) => e.target.value && setCustom((c) => ({ ...c, to: e.target.value }))}
+                aria-label={t("date_to")}
+                className="h-11 rounded-[14px] bg-secondary px-3 text-base font-bold tabular focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </label>
+          </div>
+          <p className="text-xs font-semibold text-muted-foreground text-center leading-relaxed">
+            {t("date_from")}{" "}
+            {df(new Date(customDays.lo + "T00:00:00"), { day: "numeric", month: "long", year: "numeric" })}{" "}
+            {t("date_to")}{" "}
+            {df(new Date(customDays.hi + "T00:00:00"), { day: "numeric", month: "long", year: "numeric" })}
+            {customDays.n > 0 && (
+              <span className="tabular"> · {nf(customDays.n)} {t("days_count")}</span>
+            )}
+          </p>
+        </section>
+      )}
 
       {/* weight chart */}
       <section className="nutra-card p-4 pt-5" aria-label={t("weight")}>
@@ -184,13 +250,9 @@ export function ProgressScreen() {
                   fontSize: 12,
                   fontFamily: "inherit",
                 }}
-                labelFormatter={(v) => {
-                  const d = new Date(v + "T00:00:00");
-                  return d.toLocaleDateString(lang === "ar" ? "ar-SY-u-nu-latn" : "en-US", {
-                    day: "numeric",
-                    month: "short",
-                  });
-                }}
+                labelFormatter={(v) =>
+                  df(new Date(v + "T00:00:00"), { day: "numeric", month: "short" })
+                }
                 formatter={(value: number | string, name) => [
                   fmtW(Number(value)) + " " + unit,
                   name === "w" ? t("weight") : t("moving_avg7"),
