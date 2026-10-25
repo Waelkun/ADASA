@@ -1,6 +1,4 @@
 import { NextRequest } from "next/server";
-import { readFile } from "fs/promises";
-import path from "path";
 import ZAI, { type CreateChatCompletionVisionBody } from "z-ai-web-dev-sdk";
 import { z } from "zod";
 import { kcalSanityOk } from "@/lib/nutrition";
@@ -119,25 +117,13 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    let labelImage: string | null = body?.labelImage ?? null;
-    let frontImage: string | null = body?.frontImage ?? null;
-    const demo: boolean = !!body?.demo;
+    const labelImage: string | null = body?.labelImage ?? null;
+    const frontImage: string | null = body?.frontImage ?? null;
     // optional user hint (description / weight) — treated as trusted by the model
     const note: string | null =
       typeof body?.note === "string" && body.note.trim()
         ? body.note.trim().slice(0, 500)
         : null;
-
-    // demo mode: use bundled sample product images (still runs through the real AI)
-    if (demo) {
-      const root = process.cwd();
-      const [labelBuf, frontBuf] = await Promise.all([
-        readFile(path.join(root, "public", "demo", "label.png")),
-        readFile(path.join(root, "public", "demo", "front.png")),
-      ]);
-      labelImage = `data:image/png;base64,${labelBuf.toString("base64")}`;
-      frontImage = `data:image/png;base64,${frontBuf.toString("base64")}`;
-    }
 
     if (!validImage(labelImage)) {
       return Response.json(
@@ -145,7 +131,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    if (frontImage && !validImage(frontImage)) frontImage = null;
+    const validFront = frontImage && validImage(frontImage) ? frontImage : null;
 
     const content: Array<
       | { type: "text"; text: string }
@@ -158,7 +144,7 @@ export async function POST(req: NextRequest) {
       });
     }
     content.push({ type: "image_url", image_url: { url: labelImage } });
-    if (frontImage) content.push({ type: "image_url", image_url: { url: frontImage } });
+    if (validFront) content.push({ type: "image_url", image_url: { url: validFront } });
 
     const zai = await ZAI.create();
     let completion: { choices?: Array<{ message?: { content?: string } }> };
@@ -232,7 +218,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return Response.json({ ...result, sanity_ok, source: demo ? "demo" : "ai" });
+    return Response.json({ ...result, sanity_ok, source: "ai" });
   } catch (e) {
     console.error("scan error", e);
     return Response.json({ error: "server_error", message: "Scan failed" }, { status: 500 });

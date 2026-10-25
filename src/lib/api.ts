@@ -315,7 +315,7 @@ export function useProgress() {
 
 export function useScan() {
   return useMutation({
-    mutationFn: (body: { labelImage?: string; frontImage?: string; demo?: boolean; note?: string }) =>
+    mutationFn: (body: { labelImage?: string; frontImage?: string; note?: string }) =>
       jsend<ScanResult>("/api/scan", "POST", body),
   });
 }

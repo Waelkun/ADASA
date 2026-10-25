@@ -27,6 +27,14 @@ async function compressImage(file: File, maxDim = 1600, quality = 0.8): Promise<
   }
 }
 
+/** allowed photo types (item: gallery type check) */
+const OK_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+const OK_EXT = /\.(jpe?g|png|webp|heic|heif)$/i;
+function photoTypeOk(file: File): boolean {
+  // some browsers report an empty type for HEIC — fall back to the extension
+  return OK_TYPES.includes(file.type) || (!file.type && OK_EXT.test(file.name));
+}
+
 /** downscale any image source (data URL / URL) to a small square-ish thumbnail: 256px, JPEG 0.7 */
 async function makeThumbnail(src: string, maxDim = 256, quality = 0.7): Promise<string | null> {
   try {
@@ -51,7 +59,7 @@ async function makeThumbnail(src: string, maxDim = 256, quality = 0.7): Promise<
   }
 }
 
-type ScanErrorKind = "no_label" | "unparseable" | "vision_failed" | "bad_image" | "generic";
+type ScanErrorKind = "no_label" | "unparseable" | "vision_failed" | "bad_image" | "bad_type" | "generic";
 
 export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: string | null) => void }) {
   const { t } = useI18n();
@@ -76,6 +84,10 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    if (!photoTypeOk(file)) {
+      setError("bad_type");
+      return;
+    }
     if (file.size > 8 * 1024 * 1024) {
       setError("bad_image");
       return;
@@ -88,22 +100,15 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
     }
   };
 
-  const analyze = async (demo = false) => {
-    if (!demo && !labelImg) return;
+  const analyze = async () => {
+    if (!labelImg) return;
     setError(null);
     scan.mutate(
-      demo
-        ? { demo: true, note: note.trim() || undefined }
-        : { labelImage: labelImg!, frontImage: frontImg ?? undefined, note: note.trim() || undefined },
+      { labelImage: labelImg, frontImage: frontImg ?? undefined, note: note.trim() || undefined },
       {
         onSuccess: async (r) => {
           // small compressed thumbnail kept with the entry (front photo preferred)
-          let thumb: string | null = null;
-          if (demo) {
-            thumb = await makeThumbnail("/demo/front.png");
-          } else {
-            thumb = await makeThumbnail(frontImg ?? labelImg!);
-          }
+          const thumb = await makeThumbnail(frontImg ?? labelImg);
           onResult(r, thumb);
           setLabelImg(null);
           setFrontImg(null);
@@ -131,6 +136,8 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
     switch (error) {
       case "no_label":
         return t("scan_error_no_label");
+      case "bad_type":
+        return t("scan_error_type");
       case "bad_image":
         return t("scan_error_size");
       case "vision_failed":
@@ -180,7 +187,7 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
       <input
         ref={labelInput}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
         capture="environment"
         className="hidden"
         onChange={(e) => pick(e, setLabelImg)}
@@ -189,7 +196,7 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
       <input
         ref={frontInput}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
         capture="environment"
         className="hidden"
         onChange={(e) => pick(e, setFrontImg)}
@@ -199,7 +206,7 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
       <input
         ref={labelGallery}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
         className="hidden"
         onChange={(e) => pick(e, setLabelImg)}
         aria-hidden
@@ -207,7 +214,7 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
       <input
         ref={frontGallery}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
         className="hidden"
         onChange={(e) => pick(e, setFrontImg)}
         aria-hidden
@@ -234,7 +241,7 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
           <div className="flex-1">
             <p className="text-sm font-semibold text-negative">{errorText()}</p>
             <button
-              onClick={() => analyze(!!scan.variables?.demo)}
+              onClick={() => analyze()}
               className="mt-2 nutra-chip bg-negative/15 text-negative gap-1"
             >
               <RefreshCw className="size-3" />
@@ -257,7 +264,7 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
       ) : (
         <div className="flex flex-col gap-2.5">
           <button
-            onClick={() => analyze(false)}
+            onClick={() => analyze()}
             disabled={!labelImg}
             className="w-full h-14 rounded-full bg-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform disabled:opacity-40 shadow-lg shadow-primary/25"
           >

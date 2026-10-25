@@ -148,8 +148,10 @@ const dict = {
   scan_error_no_label: { ar: "لم أجد ملصقاً غذائياً في الصورة", en: "No nutrition label found in the photo" },
   scan_error_generic: { ar: "تعذّر تحليل الصورة، حاول مجدداً", en: "Could not analyze the photo, try again" },
   scan_error_size: { ar: "الصورة كبيرة جداً (الحد 8 ميغابايت)", en: "Image too large (max 8MB)" },
-  try_demo: { ar: "جرّب بصورة تجريبية", en: "Try with a demo image" },
-  demo_note: { ar: "صورة تجريبية", en: "Demo image" },
+  scan_error_type: {
+    ar: "نوع الملف غير مدعوم — المسموح: JPEG / PNG / WebP / HEIC",
+    en: "Unsupported file type — allowed: JPEG / PNG / WebP / HEIC",
+  },
   scan_note_field: { ar: "وصف أو وزن تقريبي (اختياري) — مثال: شاورما 250غ", en: "Description or weight hint (optional) — e.g. shawarma 250g" },
 
   // manual entry
