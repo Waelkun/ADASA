@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ScanLine, PencilLine, GlassWater, Scale, Dumbbell } from "lucide-react";
+import { ScanLine, PencilLine, GlassWater, Scale, Dumbbell, UtensilsCrossed } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAppStore } from "@/lib/store";
 import { SheetShell } from "./sheet-shell";
@@ -21,6 +21,13 @@ export function QuickAddSheet() {
   const setTab = useAppStore((s) => s.setTab);
 
   const items = [
+    {
+      icon: UtensilsCrossed,
+      label: t("build_meal"),
+      hint: t("build_meal_hint"),
+      color: "text-water bg-water/12",
+      onClick: () => openSheet("meal-builder"),
+    },
     {
       icon: ScanLine,
       label: t("scan_product"),

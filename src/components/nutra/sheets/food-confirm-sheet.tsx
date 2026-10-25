@@ -4,8 +4,10 @@ import React, { useMemo, useState } from "react";
 import { AlertTriangle, Check, Sparkles } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAddFoodLog, useCreateFood, localDayStr } from "@/lib/api";
+import { useAppStore } from "@/lib/store";
 import { MEAL_TYPES, type MealType, type PendingFood } from "@/lib/types";
 import { SheetShell } from "./sheet-shell";
+import { ProductThumb } from "../product-thumb";
 import { Segmented } from "../segmented";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -69,7 +71,14 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
     f: food.fat100 ?? 0,
   });
   const [qtyMode, setQtyMode] = useState<"grams" | "servings">("grams");
-  const [grams, setGrams] = useState(Math.round(food.servingSizeG || 100));
+  // weight priority: AI-estimated meal weight > serving size > 100g
+  const [grams, setGrams] = useState(
+    Math.round(
+      food.source === "scan" && food.estimatedWeightG && food.estimatedWeightG > 0
+        ? food.estimatedWeightG
+        : food.servingSizeG || 100
+    )
+  );
   const [servings, setServings] = useState(1);
   // smart default meal by hour
   const [meal, setMeal] = useState<MealType>(() => {
@@ -101,6 +110,15 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
       toast.error(t("error_toast"));
       return;
     }
+    // entries land on the day being viewed on the Today screen (item: day nav)
+    const dayDate = useAppStore.getState().selectedDay ?? localDayStr();
+    let loggedAt: string | undefined;
+    if (dayDate !== localDayStr()) {
+      // keep intra-day ordering: viewed day + current clock time (local, no tz slip)
+      const [y, m, d] = dayDate.split("-").map(Number);
+      const n = new Date();
+      loggedAt = new Date(y, m - 1, d, n.getHours(), n.getMinutes(), n.getSeconds()).toISOString();
+    }
     try {
       let foodId = food.id ?? null;
       // save into My foods (scan / manual)
@@ -117,13 +135,15 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
           satFat100: food.satFat100 ?? null,
           fiber100: food.fiber100 ?? null,
           salt100: food.salt100 ?? null,
+          imageUrl: food.imageUrl ?? null,
         });
         foodId = created.id;
       }
       await addLog.mutateAsync({
         name: name.trim(),
         foodId,
-        dayDate: localDayStr(),
+        dayDate,
+        loggedAt,
         mealType: meal,
         grams: Math.round(effectiveGrams),
         kcal: totals.kcal,
@@ -131,6 +151,11 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
         carbsG: totals.c,
         fatG: totals.f,
         source: food.source,
+        kcal100: per100.kcal,
+        protein100: per100.p,
+        carbs100: per100.c,
+        fat100: per100.f,
+        imageUrl: food.imageUrl ?? undefined,
       });
       toast.success(t("added_toast"));
       onClose();
@@ -161,31 +186,34 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
           </div>
         )}
 
-        {/* name / brand */}
+        {/* thumb + name / brand */}
         <div className="flex flex-col gap-2">
-          {editable ? (
-            <>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t("food_name")}
-                aria-label={t("food_name")}
-                className="w-full h-13 rounded-[18px] bg-secondary px-4 text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-              <input
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                placeholder={t("brand")}
-                aria-label={t("brand")}
-                className="w-full h-11 rounded-full bg-secondary px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-            </>
-          ) : (
-            <div className="text-start">
-              <p className="text-lg font-bold leading-tight">{name}</p>
-              {brand && <p className="text-xs text-muted-foreground mt-0.5">{brand}</p>}
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            <ProductThumb src={food.imageUrl} name={name} className="size-14 rounded-2xl" />
+            {editable ? (
+              <div className="flex-1 min-w-0 flex flex-col gap-2">
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t("food_name")}
+                  aria-label={t("food_name")}
+                  className="w-full h-13 rounded-[18px] bg-secondary px-4 text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <input
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  placeholder={t("brand")}
+                  aria-label={t("brand")}
+                  className="w-full h-11 rounded-full bg-secondary px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+            ) : (
+              <div className="text-start min-w-0">
+                <p className="text-lg font-bold leading-tight truncate">{name}</p>
+                {brand && <p className="text-xs text-muted-foreground mt-0.5 truncate">{brand}</p>}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* per-100g values */}
@@ -252,7 +280,14 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
         {/* quantity */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-muted-foreground">{t("quantity")}</span>
+            <span className="text-xs font-semibold text-muted-foreground">
+              {food.source === "scan" && food.estimatedWeightG && food.estimatedWeightG > 0
+                ? t("estimated_weight")
+                : t("quantity")}
+            </span>
+            {food.source === "scan" && food.estimatedWeightG && food.estimatedWeightG > 0 && (
+              <span className="text-[10px] font-medium text-primary">{t("estimated_weight_hint")}</span>
+            )}
             {hasServing && (
               <div className="w-40">
                 <Segmented

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAppStore } from "./store";
 import type {
   Food,
   FoodLog,
@@ -44,11 +45,12 @@ async function jsend<T>(url: string, method: string, body?: unknown): Promise<T>
 
 /* ---------- today ---------- */
 
-export function useToday() {
-  const day = localDayStr();
+/** day param = viewed day on Today screen (defaults to today) */
+export function useToday(day?: string) {
+  const d = day ?? localDayStr();
   return useQuery<TodayPayload>({
-    queryKey: ["today", day],
-    queryFn: () => jget<TodayPayload>(`/api/today?date=${day}`),
+    queryKey: ["today", d],
+    queryFn: () => jget<TodayPayload>(`/api/today?date=${d}`),
   });
 }
 
@@ -72,10 +74,13 @@ export function useUpdateProfile() {
 
 /* ---------- foods ---------- */
 
-export function useFoods(q: string, fav = false) {
+export function useFoods(q: string, fav = false, sort?: "usage") {
   return useQuery<Food[]>({
-    queryKey: ["foods", q, fav],
-    queryFn: () => jget<Food[]>(`/api/foods?q=${encodeURIComponent(q)}&fav=${fav ? 1 : 0}`),
+    queryKey: ["foods", q, fav, sort ?? null],
+    queryFn: () =>
+      jget<Food[]>(
+        `/api/foods?q=${encodeURIComponent(q)}&fav=${fav ? 1 : 0}${sort ? `&sort=${sort}` : ""}`
+      ),
   });
 }
 
@@ -108,6 +113,12 @@ export interface AddLogBody {
   source?: string;
   foodId?: string | null;
   loggedAt?: string;
+  /** additive per-100g values + thumbnail */
+  kcal100?: number;
+  protein100?: number;
+  carbs100?: number;
+  fat100?: number;
+  imageUrl?: string;
 }
 
 export function useAddFoodLog() {
@@ -132,6 +143,32 @@ export function useDeleteFoodLog() {
   });
 }
 
+/** edit grams (and proportionally recomputed totals) of an existing entry */
+export function useUpdateFoodLog() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string;
+      grams?: number;
+      kcal?: number;
+      proteinG?: number;
+      carbsG?: number;
+      fatG?: number;
+      kcal100?: number | null;
+      protein100?: number | null;
+      carbs100?: number | null;
+      fat100?: number | null;
+    }) => jsend<FoodLog>(`/api/food-logs/${id}`, "PATCH", body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["today"] });
+      qc.invalidateQueries({ queryKey: ["progress"] });
+    },
+  });
+}
+
 /* ---------- water ---------- */
 
 export interface WaterPayload {
@@ -141,11 +178,11 @@ export interface WaterPayload {
   week: { date: string; total: number }[];
 }
 
-export function useWater() {
-  const day = localDayStr();
+export function useWater(day?: string) {
+  const d = day ?? localDayStr();
   return useQuery<WaterPayload>({
-    queryKey: ["water", day],
-    queryFn: () => jget<WaterPayload>(`/api/water?date=${day}`),
+    queryKey: ["water", d],
+    queryFn: () => jget<WaterPayload>(`/api/water?date=${d}`),
   });
 }
 
@@ -153,7 +190,10 @@ export function useAddWater() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (amountMl: number) =>
-      jsend<WaterLog>("/api/water", "POST", { amountMl, dayDate: localDayStr() }),
+      jsend<WaterLog>("/api/water", "POST", {
+        amountMl,
+        dayDate: useAppStore.getState().selectedDay ?? localDayStr(),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["water"] });
       qc.invalidateQueries({ queryKey: ["today"] });
@@ -275,7 +315,7 @@ export function useProgress() {
 
 export function useScan() {
   return useMutation({
-    mutationFn: (body: { labelImage?: string; frontImage?: string; demo?: boolean }) =>
+    mutationFn: (body: { labelImage?: string; frontImage?: string; demo?: boolean; note?: string }) =>
       jsend<ScanResult>("/api/scan", "POST", body),
   });
 }

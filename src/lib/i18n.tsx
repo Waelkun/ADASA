@@ -70,6 +70,8 @@ const dict = {
 
   // quick add
   quick_add: { ar: "إضافة سريعة", en: "Quick add" },
+  build_meal: { ar: "بناء وجبة", en: "Build a meal" },
+  build_meal_hint: { ar: "عدة عناصر بوجبة وحدة", en: "Several items in one meal" },
   scan_product: { ar: "امسح منتجاً", en: "Scan product" },
   scan_hint: { ar: "صوّر الملصق الغذائي ونقرأ القيم بالذكاء الاصطناعي", en: "Snap the nutrition label, AI reads it for you" },
   manual_entry: { ar: "إدخال يدوي", en: "Manual entry" },
@@ -98,6 +100,9 @@ const dict = {
   source_manual: { ar: "يدوي", en: "Manual" },
   source_myfoods: { ar: "أطعمتي", en: "My foods" },
   today_log: { ar: "اليوم", en: "Today" },
+  prev_day: { ar: "اليوم السابق", en: "Previous day" },
+  next_day: { ar: "اليوم التالي", en: "Next day" },
+  back_to_today: { ar: "الرجوع لليوم", en: "Back to today" },
   delete_confirm: { ar: "حذف هذا الإدخال؟", en: "Delete this entry?" },
   per_100g: { ar: "لكل ١٠٠غ", en: "per 100g" },
   per_serving: { ar: "للحصة", en: "per serving" },
@@ -120,6 +125,8 @@ const dict = {
   analyzing: { ar: "جارٍ قراءة الملصق…", en: "Reading the label…" },
   analyzing_hint: { ar: "يستغرق عادة بضع ثوانٍ", en: "Usually takes a few seconds" },
   scan_result: { ar: "نتيجة المسح", en: "Scan result" },
+  estimated_weight: { ar: "الوزن التقديري", en: "Estimated weight" },
+  estimated_weight_hint: { ar: "من الصورة — عدّله لو حابب", en: "From the photo — adjust if you like" },
   verify_values: { ar: "رجاءً تحقق من القيم قبل الإضافة", en: "Please verify values before adding" },
   low_confidence: { ar: "ثقة منخفضة — راجع القيم", en: "Low confidence — review values" },
   confidence: { ar: "الثقة", en: "Confidence" },
@@ -135,6 +142,7 @@ const dict = {
   scan_error_size: { ar: "الصورة كبيرة جداً (الحد ٨ ميغابايت)", en: "Image too large (max 8MB)" },
   try_demo: { ar: "جرّب بصورة تجريبية", en: "Try with a demo image" },
   demo_note: { ar: "صورة تجريبية", en: "Demo image" },
+  scan_note_field: { ar: "وصف أو وزن تقريبي (اختياري) — مثال: شاورما 250غ", en: "Description or weight hint (optional) — e.g. shawarma 250g" },
 
   // manual entry
   manual_title: { ar: "إدخال يدوي", en: "Manual entry" },
@@ -146,6 +154,20 @@ const dict = {
   // my-foods add sheet
   choose_meal: { ar: "اختر الوجبة", en: "Choose meal" },
   add_food: { ar: "أضف طعاماً", en: "Add food" },
+
+  // meal builder
+  search_products: { ar: "ابحث في منتجاتك…", en: "Search your products…" },
+  edit_amount: { ar: "تعديل الكمية", en: "Edit amount" },
+  meal_items: { ar: "عناصر الوجبة", en: "Meal items" },
+  meal_builder_empty: { ar: "لا عناصر بعد — اختر من القائمة فوق", en: "No items yet — pick from the list above" },
+  save_meal: { ar: "حفظ الوجبة", en: "Save meal" },
+  discard_meal_q: { ar: "تتجاهل الوجبة؟", en: "Discard this meal?" },
+  discard_meal_desc: { ar: "رح تنحذف كل العناصر المضافة", en: "All added items will be removed" },
+  keep_editing: { ar: "متابعة", en: "Continue" },
+  discard: { ar: "تجاهل", en: "Discard" },
+  added_to_meal: { ar: "أُضيف إلى الوجبة", en: "Added to meal" },
+  draft_restored: { ar: "رجّعنا لك مسودة وجبتك", en: "Your meal draft was restored" },
+  meal_saved: { ar: "تم حفظ الوجبة", en: "Meal saved" },
 
   // progress
   progress: { ar: "التقدم", en: "Progress" },

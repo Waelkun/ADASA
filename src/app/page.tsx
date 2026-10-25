@@ -18,6 +18,7 @@ import { QuickAddSheet, WaterSheet, WeightSheet } from "@/components/nutra/sheet
 import { WorkoutSheet } from "@/components/nutra/sheets/workout-sheet";
 import { ScanSheet } from "@/components/nutra/sheets/scan-sheet";
 import { FoodConfirmSheet } from "@/components/nutra/sheets/food-confirm-sheet";
+import { MealBuilderSheet } from "@/components/nutra/sheets/meal-builder-sheet";
 import { kcalSanityOk } from "@/lib/nutrition";
 
 const BLANK_MANUAL: PendingFood = {
@@ -32,7 +33,7 @@ const BLANK_MANUAL: PendingFood = {
 };
 
 /** convert scan result -> pending food (derive per-100g if only per-serving) */
-function scanToPending(r: ScanResult): PendingFood {
+function scanToPending(r: ScanResult, thumb?: string | null): PendingFood {
   let kcal100 = r.per_100g?.kcal ?? null;
   let p100 = r.per_100g?.protein_g ?? null;
   let c100 = r.per_100g?.carbs_g ?? null;
@@ -64,6 +65,8 @@ function scanToPending(r: ScanResult): PendingFood {
     satFat100: r.per_100g?.sat_fat_g ?? null,
     fiber100: r.per_100g?.fiber_g ?? null,
     salt100: r.per_100g?.salt_g ?? null,
+    imageUrl: thumb ?? null,
+    estimatedWeightG: r.estimated_weight_g ?? null,
   };
 }
 
@@ -96,9 +99,9 @@ function AppShell() {
   const isManual = sheet === "manual-food";
   const confirmOpen = pendingFood != null || isManual;
 
-  const handleScanResult = (r: ScanResult) => {
+  const handleScanResult = (r: ScanResult, thumb: string | null) => {
     closeSheet(); // close scan sheet
-    setPendingFood(scanToPending(r));
+    setPendingFood(scanToPending(r, thumb));
   };
 
   const hour = new Date().getHours();
@@ -171,6 +174,7 @@ function AppShell() {
           if (isManual) closeSheet();
         }}
       />
+      <MealBuilderSheet />
     </div>
   );
 }

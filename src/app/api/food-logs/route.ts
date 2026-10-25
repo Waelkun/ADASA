@@ -29,6 +29,13 @@ export async function POST(req: NextRequest) {
       const n = Number(v);
       return Number.isFinite(n) ? n : 0;
     };
+    // additive nullable fields (per-100g + thumbnail); old clients may omit them
+    const numOrNull = (v: unknown) => {
+      const n = Number(v);
+      return Number.isFinite(n) && n >= 0 ? n : null;
+    };
+    const imgOk = (v: unknown): v is string =>
+      typeof v === "string" && v.startsWith("data:image/") && v.length < 400_000;
     if (!b?.name || !b?.dayDate || !isDayStr(b.dayDate)) {
       return Response.json({ error: "name and dayDate required" }, { status: 400 });
     }
@@ -48,6 +55,11 @@ export async function POST(req: NextRequest) {
         carbsG: Math.max(0, num(b.carbsG)),
         fatG: Math.max(0, num(b.fatG)),
         source: ["scan", "manual", "myfoods"].includes(b.source) ? b.source : "manual",
+        kcal100: numOrNull(b.kcal100),
+        protein100: numOrNull(b.protein100),
+        carbs100: numOrNull(b.carbs100),
+        fat100: numOrNull(b.fat100),
+        imageUrl: imgOk(b.imageUrl) ? b.imageUrl : null,
       },
     });
     return Response.json(

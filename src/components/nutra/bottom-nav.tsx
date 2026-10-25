@@ -4,7 +4,8 @@ import React from "react";
 import { Plus, CalendarDays, ClipboardList, TrendingUp, Dumbbell } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
-import type { DictKey, TabId } from "@/lib/i18n";
+import type { DictKey } from "@/lib/i18n";
+import type { TabId } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const TABS: { id: TabId; icon: React.ElementType; key: DictKey }[] = [

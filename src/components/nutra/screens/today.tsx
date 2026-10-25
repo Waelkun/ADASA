@@ -1,16 +1,19 @@
 "use client";
 
-import React from "react";
-import { Flame, GlassWater, Dumbbell, Trash2, Sparkles, Plus, ChevronLeft } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { Flame, GlassWater, Dumbbell, Trash2, Sparkles, Plus, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { useToday, useDeleteFoodLog, useAddFoodLog, useWater, useAddWater, useUndoWater } from "@/lib/api";
+import { useToday, useDeleteFoodLog, useAddFoodLog, useWater, useAddWater, useUndoWater, localDayStr } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { CalorieRing } from "../calorie-ring";
 import { MacroBar, MacroDonut } from "../macro-donut";
-import { MEAL_TYPES, type MealType } from "@/lib/types";
+import { ProductThumb } from "../product-thumb";
+import { MEAL_TYPES, type MealType, type FoodLog } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { EditGramsSheet, per100OfLog } from "../sheets/edit-grams-sheet";
+import { Pencil } from "lucide-react";
 
 const MEAL_ICON: Record<MealType, string> = {
   breakfast: "🌅",
@@ -19,16 +22,39 @@ const MEAL_ICON: Record<MealType, string> = {
   snack: "🥜",
 };
 
+/** parse YYYY-MM-DD as a local Date (noon, avoids DST edge) */
+function parseDayStr(s: string): Date {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1, 12);
+}
+
 export function TodayScreen() {
   const { t, nf, df } = useI18n();
   const openSheet = useAppStore((s) => s.openSheet);
   const setTab = useAppStore((s) => s.setTab);
-  const { data: today, isLoading } = useToday();
-  const { data: water } = useWater();
+  const selectedDay = useAppStore((s) => s.selectedDay);
+  const setSelectedDay = useAppStore((s) => s.setSelectedDay);
+  const { data: today, isLoading } = useToday(selectedDay ?? undefined);
+  const { data: water } = useWater(selectedDay ?? undefined);
   const deleteLog = useDeleteFoodLog();
   const addLog = useAddFoodLog();
   const addWater = useAddWater();
   const undoWater = useUndoWater();
+  const [editingLog, setEditingLog] = useState<FoodLog | null>(null);
+
+  const todayStr = localDayStr();
+  const viewDay = selectedDay ?? todayStr;
+  const isToday = viewDay === todayStr;
+  const viewDate = useMemo(() => parseDayStr(viewDay), [viewDay]);
+
+  /** move to an adjacent day (never into the future) */
+  const shiftDay = (delta: number) => {
+    const dt = parseDayStr(viewDay);
+    dt.setDate(dt.getDate() + delta);
+    const s = localDayStr(dt);
+    if (s > todayStr) return; // no future days
+    setSelectedDay(s === todayStr ? null : s);
+  };
 
   const now = new Date();
   const greeting =
@@ -55,9 +81,40 @@ export function TodayScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* date line */}
+      {/* date navigation: prev / date (tap = back to today) / next */}
       <div className="flex items-center justify-between px-1">
-        <p className="text-[13px] font-medium text-muted-foreground">{df(now)}</p>
+        <div className="flex items-center gap-0.5">
+          <button
+            aria-label={t("prev_day")}
+            onClick={() => shiftDay(-1)}
+            className="size-11 grid place-items-center rounded-full text-muted-foreground hover:bg-secondary transition-colors active:scale-95"
+          >
+            <ChevronRight className="size-5 rtl:rotate-0 ltr:rotate-180" />
+          </button>
+          <button
+            onClick={() => setSelectedDay(null)}
+            aria-label={isToday ? df(viewDate) : t("back_to_today")}
+            className="min-h-[44px] px-2 flex flex-col items-center justify-center"
+          >
+            <span className="text-[13px] font-semibold text-foreground whitespace-nowrap">
+              {df(viewDate)}
+            </span>
+            {!isToday && (
+              <span className="text-[10px] font-bold text-primary flex items-center gap-0.5">
+                <Undo2 className="size-3" />
+                {t("today_log")}
+              </span>
+            )}
+          </button>
+          <button
+            aria-label={t("next_day")}
+            onClick={() => shiftDay(1)}
+            disabled={isToday}
+            className="size-11 grid place-items-center rounded-full text-muted-foreground hover:bg-secondary transition-colors active:scale-95 disabled:opacity-25 disabled:pointer-events-none"
+          >
+            <ChevronLeft className="size-5 rtl:rotate-0 ltr:rotate-180" />
+          </button>
+        </div>
         {today && today.streak > 0 && (
           <span className="nutra-chip bg-positive/12 text-positive gap-1">
             <Flame className="size-3.5" />
@@ -104,7 +161,7 @@ export function TodayScreen() {
             </span>
           ) : (
             <button
-              onClick={() => openSheet("workout", { workoutDate: undefined })}
+              onClick={() => openSheet("workout", { workoutDate: selectedDay ?? undefined })}
               className="nutra-chip bg-secondary text-secondary-foreground gap-1 hover:bg-accent transition-colors"
             >
               <Dumbbell className="size-3.5" />
@@ -220,8 +277,17 @@ export function TodayScreen() {
                     <span aria-hidden>{MEAL_ICON[g.meal]}</span>
                     {t(g.meal as "breakfast")}
                   </span>
-                  <span className="text-xs font-semibold tabular text-muted-foreground">
-                    {nf(g.kcal)} {t("kcal")}
+                  <span className="flex items-center gap-1">
+                    <span className="text-xs font-semibold tabular text-muted-foreground">
+                      {nf(g.kcal)} {t("kcal")}
+                    </span>
+                    <button
+                      aria-label={`${t("add_food")} — ${t(g.meal as "breakfast")}`}
+                      onClick={() => openSheet("meal-builder", { mealType: g.meal })}
+                      className="size-9 grid place-items-center rounded-full text-primary hover:bg-accent transition-colors active:scale-95"
+                    >
+                      <Plus className="size-4" />
+                    </button>
                   </span>
                 </div>
                 <ul>
@@ -233,6 +299,7 @@ export function TodayScreen() {
                         idx !== g.items.length - 1 && "border-b border-border/60"
                       )}
                     >
+                      <ProductThumb src={l.imageUrl} name={l.name} />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold truncate">{l.name}</p>
                         <p className="text-xs text-muted-foreground tabular">
@@ -249,6 +316,15 @@ export function TodayScreen() {
                       <span className="text-sm font-bold tabular whitespace-nowrap">
                         {nf(l.kcal)}
                       </span>
+                      {per100OfLog(l) && (
+                        <button
+                          aria-label={`${t("edit_amount")} ${l.name}`}
+                          onClick={() => setEditingLog(l)}
+                          className="size-9 grid place-items-center rounded-full text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+                        >
+                          <Pencil className="size-4" />
+                        </button>
+                      )}
                       <button
                         aria-label={`${t("delete")} ${l.name}`}
                         onClick={() =>
@@ -262,7 +338,7 @@ export function TodayScreen() {
                                     addLog.mutate({
                                       name: l.name,
                                       foodId: l.foodId,
-                                      dayDate: l.loggedAt.slice(0, 10),
+                                      dayDate: l.dayDate ?? l.loggedAt.slice(0, 10),
                                       mealType: l.mealType,
                                       grams: l.grams,
                                       kcal: l.kcal,
@@ -271,6 +347,11 @@ export function TodayScreen() {
                                       fatG: l.fatG,
                                       source: l.source,
                                       loggedAt: l.loggedAt,
+                                      kcal100: l.kcal100 ?? undefined,
+                                      protein100: l.protein100 ?? undefined,
+                                      carbs100: l.carbs100 ?? undefined,
+                                      fat100: l.fat100 ?? undefined,
+                                      imageUrl: l.imageUrl ?? undefined,
                                     }),
                                 },
                               });
@@ -290,6 +371,9 @@ export function TodayScreen() {
           </div>
         )}
       </section>
+
+      {/* edit-grams sheet */}
+      <EditGramsSheet log={editingLog} onClose={() => setEditingLog(null)} />
     </div>
   );
 }

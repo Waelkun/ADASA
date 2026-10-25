@@ -42,6 +42,7 @@ model Food {
   satFat100    Float?
   fiber100     Float?
   salt100      Float?
+  imageUrl     String?  // compressed thumbnail (data URL) shown beside the name
   isFavorite   Boolean  @default(false)
   createdAt    DateTime @default(now())
   logs         FoodLog[]
@@ -63,6 +64,12 @@ model FoodLog {
   carbsG    Float
   fatG      Float
   source    String   @default("manual") // scan | manual | myfoods
+  // additive (nullable, backward-compatible): per-100g values + thumbnail
+  kcal100    Float?
+  protein100 Float?
+  carbs100   Float?
+  fat100     Float?
+  imageUrl   String?
   createdAt DateTime @default(now())
 
   @@index([dayDate])

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
-import ZAI from "z-ai-web-dev-sdk";
+import ZAI, { type CreateChatCompletionVisionBody } from "z-ai-web-dev-sdk";
 import { z } from "zod";
 import { kcalSanityOk } from "@/lib/nutrition";
 
@@ -26,6 +26,7 @@ const scanSchema = z.object({
   brand: z.string().nullable().catch(null),
   serving_size_g: z.number().nullable().catch(null),
   servings_per_container: z.number().nullable().catch(null),
+  estimated_weight_g: z.number().nullable().catch(null),
   per_100g: nutrientsSchema.nullable().catch(null),
   per_serving: nutrientsSchema.nullable().catch(null),
   confidence: z.number().min(0).max(1).catch(0.5),
@@ -69,17 +70,24 @@ function extractJson(text: string): string | null {
   return t.slice(start, end + 1);
 }
 
-const SYSTEM_PROMPT = `You are a precise nutrition-label OCR engine. You will receive product photos:
+const SYSTEM_PROMPT = `You are a precise nutrition analysis engine. You will receive product photos:
 - The FIRST image is the nutrition facts label (back of package): the PRIMARY source of truth for all nutrition values.
 - If a SECOND image is present, it shows the product front: use it ONLY for the product name and brand.
 
 Read carefully. Labels may be in Arabic (القيمة الغذائية / معلومات غذائية) or English, or both. Convert kJ to kcal by dividing by 4.184 (round to integer). Distinguish "per 100g" / "per 100ml" columns from "per serving" / "per bar" / "per pack" columns; extract both when both are visible.
 
+PREPARED MEALS: the photo may show a prepared meal/dish (home cooking, restaurant plate, mixed food) instead of a packaged label. In that case:
+- Estimate the nutrition values PER 100G from the visible food (ingredients, cooking method, oils, portion look).
+- Estimate the TOTAL WEIGHT of the visible food in grams and return it in "estimated_weight_g".
+- Put the meal estimates in per_100g; set serving_size_g to null.
+
+USER HINT: the user may provide a short hint (a description and/or a weight). If present, treat it as TRUSTED ground truth: it OVERRIDES your visual estimates for the name and for any weight it mentions (use it for estimated_weight_g / serving_size_g). Never contradict a hinted weight.
+
 STRICT RULES:
 - Return ONLY ONE valid JSON object. No markdown fences, no explanations, no extra keys.
-- NEVER guess or estimate values that are not clearly visible: use null.
+- NEVER guess or estimate label values that are not clearly visible: use null. (Meal estimates, however, are expected — they are the whole point for dishes.)
 - All numbers must be non-negative. Round grams to 1 decimal max.
-- confidence: 0.9+ only when the label is crisp and fully readable; 0.5-0.9 when partially readable; below 0.5 when blurry or the label is missing.
+- confidence: 0.9+ only when the label is crisp and fully readable (or the meal is clearly identifiable); 0.5-0.9 when partially readable; below 0.5 when blurry or the label is missing.
 - notes: one short sentence about ambiguities (e.g. "energy in kJ, converted to kcal"), or null.
 
 JSON schema (exact keys):
@@ -88,6 +96,7 @@ JSON schema (exact keys):
   "brand": string|null,
   "serving_size_g": number|null,
   "servings_per_container": number|null,
+  "estimated_weight_g": number|null,
   "per_100g": {"kcal": number|null,"protein_g": number|null,"carbs_g": number|null,"sugar_g": number|null,"fat_g": number|null,"sat_fat_g": number|null,"fiber_g": number|null,"salt_g": number|null},
   "per_serving": {"kcal": number|null,"protein_g": number|null,"carbs_g": number|null,"sugar_g": number|null,"fat_g": number|null,"sat_fat_g": number|null,"fiber_g": number|null,"salt_g": number|null},
   "confidence": number,
@@ -113,6 +122,11 @@ export async function POST(req: NextRequest) {
     let labelImage: string | null = body?.labelImage ?? null;
     let frontImage: string | null = body?.frontImage ?? null;
     const demo: boolean = !!body?.demo;
+    // optional user hint (description / weight) — treated as trusted by the model
+    const note: string | null =
+      typeof body?.note === "string" && body.note.trim()
+        ? body.note.trim().slice(0, 300)
+        : null;
 
     // demo mode: use bundled sample product images (still runs through the real AI)
     if (demo) {
@@ -133,19 +147,27 @@ export async function POST(req: NextRequest) {
     }
     if (frontImage && !validImage(frontImage)) frontImage = null;
 
-    const content: Array<Record<string, unknown>> = [
-      { type: "text", text: SYSTEM_PROMPT },
-      { type: "image_url", image_url: { url: labelImage } },
-    ];
+    const content: Array<
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string } }
+    > = [{ type: "text", text: SYSTEM_PROMPT }];
+    if (note) {
+      content.push({
+        type: "text",
+        text: `USER HINT (TRUSTED — overrides your visual estimates, especially any mentioned weight): "${note}"`,
+      });
+    }
+    content.push({ type: "image_url", image_url: { url: labelImage } });
     if (frontImage) content.push({ type: "image_url", image_url: { url: frontImage } });
 
     const zai = await ZAI.create();
     let completion: { choices?: Array<{ message?: { content?: string } }> };
     try {
+      // note: the SDK defaults the vision model at runtime; its type just requires the field
       completion = await zai.chat.completions.createVision({
         messages: [{ role: "user", content }],
         thinking: { type: "disabled" },
-      });
+      } as CreateChatCompletionVisionBody);
     } catch (e) {
       console.error("scan: vision call failed", e);
       return Response.json(

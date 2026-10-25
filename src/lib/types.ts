@@ -35,6 +35,7 @@ export interface Food {
   satFat100: number | null;
   fiber100: number | null;
   salt100: number | null;
+  imageUrl: string | null; // compressed thumbnail (data URL)
   isFavorite: boolean;
 }
 
@@ -50,6 +51,14 @@ export interface FoodLog {
   carbsG: number;
   fatG: number;
   source: SourceType;
+  /** client-local YYYY-MM-DD (present in API responses) */
+  dayDate?: string;
+  /** per-100g values + thumbnail (additive; old entries may lack them) */
+  kcal100?: number | null;
+  protein100?: number | null;
+  carbs100?: number | null;
+  fat100?: number | null;
+  imageUrl?: string | null;
 }
 
 export interface WaterLog {
@@ -101,6 +110,8 @@ export interface ScanResult {
   brand: string | null;
   serving_size_g: number | null;
   servings_per_container: number | null;
+  /** AI estimate of total visible food weight (prepared meals / trusted hints) */
+  estimated_weight_g: number | null;
   per_100g: {
     kcal: number;
     protein_g: number;
@@ -147,4 +158,8 @@ export interface PendingFood {
   satFat100?: number | null;
   fiber100?: number | null;
   salt100?: number | null;
+  /** compressed thumbnail kept with the scan */
+  imageUrl?: string | null;
+  /** AI-estimated total weight in grams (meal photos) */
+  estimatedWeightG?: number | null;
 }

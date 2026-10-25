@@ -12,15 +12,18 @@ export function SheetShell({
   title,
   children,
   contentClassName,
+  dismissible = true,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   title: string;
   children: React.ReactNode;
   contentClassName?: string;
+  /** false = no overlay-click / swipe-dismiss (e.g. protected meal draft) */
+  dismissible?: boolean;
 }) {
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
+    <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false} dismissible={dismissible}>
       <DrawerContent
         className="mx-auto max-w-md rounded-t-[28px] border-t border-border bg-card focus:outline-none"
         aria-describedby={undefined}

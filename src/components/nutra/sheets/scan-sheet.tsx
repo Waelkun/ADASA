@@ -28,9 +28,33 @@ async function compressImage(file: File, maxDim = 1600, quality = 0.8): Promise<
   }
 }
 
+/** downscale any image source (data URL / URL) to a small square-ish thumbnail: 256px, JPEG 0.7 */
+async function makeThumbnail(src: string, maxDim = 256, quality = 0.7): Promise<string | null> {
+  try {
+    const blob = await (await fetch(src)).blob();
+    const bitmap = await createImageBitmap(blob);
+    try {
+      const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+      const w = Math.max(1, Math.round(bitmap.width * scale));
+      const h = Math.max(1, Math.round(bitmap.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.drawImage(bitmap, 0, 0, w, h);
+      return canvas.toDataURL("image/jpeg", quality);
+    } finally {
+      bitmap.close?.();
+    }
+  } catch {
+    return null;
+  }
+}
+
 type ScanErrorKind = "no_label" | "unparseable" | "vision_failed" | "bad_image" | "generic";
 
-export function ScanSheet({ onResult }: { onResult: (r: ScanResult) => void }) {
+export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: string | null) => void }) {
   const { t } = useI18n();
   const sheet = useAppStore((s) => s.sheet);
   const closeSheet = useAppStore((s) => s.closeSheet);
@@ -38,6 +62,7 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult) => void }) {
 
   const [labelImg, setLabelImg] = useState<string | null>(null);
   const [frontImg, setFrontImg] = useState<string | null>(null);
+  const [note, setNote] = useState("");
   const [error, setError] = useState<ScanErrorKind | null>(null);
   const labelInput = useRef<HTMLInputElement>(null);
   const frontInput = useRef<HTMLInputElement>(null);
@@ -62,16 +87,26 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult) => void }) {
     }
   };
 
-  const analyze = (demo = false) => {
+  const analyze = async (demo = false) => {
     if (!demo && !labelImg) return;
     setError(null);
     scan.mutate(
-      demo ? { demo: true } : { labelImage: labelImg!, frontImage: frontImg ?? undefined },
+      demo
+        ? { demo: true, note: note.trim() || undefined }
+        : { labelImage: labelImg!, frontImage: frontImg ?? undefined, note: note.trim() || undefined },
       {
-        onSuccess: (r) => {
-          onResult(r);
+        onSuccess: async (r) => {
+          // small compressed thumbnail kept with the entry (front photo preferred)
+          let thumb: string | null = null;
+          if (demo) {
+            thumb = await makeThumbnail("/demo/front.png");
+          } else {
+            thumb = await makeThumbnail(frontImg ?? labelImg!);
+          }
+          onResult(r, thumb);
           setLabelImg(null);
           setFrontImg(null);
+          setNote("");
         },
         onError: (e: Error & { payload?: { error?: string } }) => {
           const code = e.payload?.error;
@@ -156,6 +191,16 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult) => void }) {
         aria-hidden
       />
 
+      {/* optional description / weight hint (trusted by the AI) */}
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder={t("scan_note_field")}
+        aria-label={t("scan_note_field")}
+        maxLength={200}
+        className="w-full h-12 rounded-full bg-card border border-border px-5 text-sm font-medium mb-4 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+      />
+
       {/* error */}
       {error && (
         <div
@@ -166,7 +211,7 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult) => void }) {
           <div className="flex-1">
             <p className="text-sm font-semibold text-negative">{errorText()}</p>
             <button
-              onClick={() => analyze(scan.variables?.variables?.demo)}
+              onClick={() => analyze(!!scan.variables?.demo)}
               className="mt-2 nutra-chip bg-negative/15 text-negative gap-1"
             >
               <RefreshCw className="size-3" />

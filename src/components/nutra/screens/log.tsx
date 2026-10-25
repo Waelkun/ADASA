@@ -7,6 +7,7 @@ import { useFoods, useToggleFavorite } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import type { Food, PendingFood } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProductThumb } from "../product-thumb";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Segmented } from "../segmented";
@@ -132,6 +133,7 @@ function FoodRow({
   return (
     <li className="nutra-card px-4 py-3 flex items-center gap-3">
       <button onClick={onPick} className="flex items-center gap-3 flex-1 min-w-0 text-start min-h-[44px]">
+        <ProductThumb src={food.imageUrl} name={food.name} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold truncate">{food.name}</p>
           <p className="text-xs text-muted-foreground truncate">
