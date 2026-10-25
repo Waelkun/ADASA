@@ -302,6 +302,9 @@ export interface ProgressPayload {
   dailyKcal: { date: string; kcal: number }[];
   macroAvg: { protein: number; carbs: number; fat: number };
   waterAvg: number;
+  /** per-day macro averages + water (56d) — period-aware stats (additive) */
+  dailyMacros: { date: string; p: number; c: number; f: number }[];
+  dailyWater: { date: string; ml: number }[];
   streak: number;
   loggedDays30: number;
 }

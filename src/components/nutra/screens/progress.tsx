@@ -88,7 +88,7 @@ export function ProgressScreen() {
     }, [weights, range, custom]);
 
   // kcal bars: last 7 days (fixed ranges) / within the custom period (last 14)
-  const { bars: kcalWeek, avg: avgKcal } = useMemo(() => {
+  const { bars: kcalWeek } = useMemo(() => {
     let arr = data?.dailyKcal ?? [];
     if (range === "custom") {
       const lo = custom.from <= custom.to ? custom.from : custom.to;
@@ -100,11 +100,78 @@ export function ProgressScreen() {
       ...d,
       day: df(new Date(d.date + "T00:00:00"), { weekday: "short" }),
     }));
-    const avg = arr.length ? Math.round(arr.reduce((a, b) => a + b.kcal, 0) / arr.length) : 0;
-    return { bars, avg };
+    return { bars };
   }, [data?.dailyKcal, range, custom, df]);
 
   const kcalGoal = data?.profile?.kcalGoal ?? 2100;
+
+  // ===== period window + previous-period window (for trends) =====
+  const DAY = 86400000;
+  const { win, prev } = useMemo(() => {
+    const today = localDayStr();
+    const todayMs = new Date(today + "T00:00:00").getTime();
+    let lo: string;
+    let hi: string;
+    if (range === "custom") {
+      lo = custom.from <= custom.to ? custom.from : custom.to;
+      hi = custom.from <= custom.to ? custom.to : custom.from;
+    } else if (range === "all") {
+      lo = weights[0]?.date ?? today;
+      hi = today;
+    } else {
+      const n = RANGE_DAYS[range];
+      lo = localDayStr(new Date(todayMs - (n - 1) * DAY));
+      hi = today;
+    }
+    const lenDays = Math.round((new Date(hi + "T00:00:00").getTime() - new Date(lo + "T00:00:00").getTime()) / DAY) + 1;
+    const prevHi = localDayStr(new Date(new Date(lo + "T00:00:00").getTime() - DAY));
+    const prevLo = localDayStr(new Date(new Date(lo + "T00:00:00").getTime() - lenDays * DAY));
+    return { win: { lo, hi }, prev: { lo: prevLo, hi: prevHi } };
+  }, [range, custom, weights]);
+
+  // ===== period-aware averages + trend vs the previous period =====
+  const stats = useMemo(() => {
+    const inWin = (d: string, w: { lo: string; hi: string }) => d >= w.lo && d <= w.hi;
+    const mean = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+
+    const kcalDays = (data?.dailyKcal ?? []).filter((d) => inWin(d.date, win) && d.kcal > 0);
+    const kcalPrev = (data?.dailyKcal ?? []).filter((d) => inWin(d.date, prev) && d.kcal > 0);
+    const avgKcal = Math.round(mean(kcalDays.map((d) => d.kcal)));
+    const prevKcal = Math.round(mean(kcalPrev.map((d) => d.kcal)));
+
+    const wIn = weights.filter((w) => inWin(w.date, win));
+    const wPrev = weights.filter((w) => inWin(w.date, prev));
+    const avgW = wIn.length ? mean(wIn.map((w) => w.weightKg)) : null;
+    const prevW = wPrev.length ? mean(wPrev.map((w) => w.weightKg)) : null;
+
+    const watIn = (data?.dailyWater ?? []).filter((d) => inWin(d.date, win) && d.ml > 0);
+    const watPrev = (data?.dailyWater ?? []).filter((d) => inWin(d.date, prev) && d.ml > 0);
+    const avgWater = Math.round(mean(watIn.map((d) => d.ml)));
+    const prevWater = Math.round(mean(watPrev.map((d) => d.ml)));
+
+    const mIn = (data?.dailyMacros ?? []).filter((d) => inWin(d.date, win));
+    const macroAvg = {
+      protein: Math.round(mean(mIn.map((d) => d.p)) * 10) / 10,
+      carbs: Math.round(mean(mIn.map((d) => d.c)) * 10) / 10,
+      fat: Math.round(mean(mIn.map((d) => d.f)) * 10) / 10,
+    };
+
+    return {
+      avgKcal,
+      prevKcal,
+      avgW,
+      prevW,
+      avgWater,
+      prevWater,
+      macroAvg,
+      loggedDays: kcalDays.length,
+      trend: {
+        kcal: kcalPrev.length ? avgKcal - prevKcal : null,
+        weight: prevW != null && avgW != null ? avgW - prevW : null,
+        water: watPrev.length ? avgWater - prevWater : null,
+      },
+    };
+  }, [data, weights, win, prev]);
 
   // custom period length in days + readable summary
   const customDays = useMemo(() => {
@@ -171,7 +238,7 @@ export function ProgressScreen() {
         ]}
       />
 
-      {/* custom period: from → to date pickers + readable summary */}
+      {/* custom period: from → to date pickers + shortcuts + readable summary */}
       {range === "custom" && (
         <section className="nutra-card p-4 flex flex-col gap-3" aria-label={t("range_custom")}>
           <div className="flex items-end gap-2">
@@ -198,6 +265,23 @@ export function ProgressScreen() {
                 className="h-11 rounded-[14px] bg-secondary px-3 text-base font-bold tabular focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </label>
+          </div>
+          {/* shortcuts: last 3 / 7 / 14 days (inclusive of today) */}
+          <div className="flex gap-2">
+            {([3, 7, 14] as const).map((n) => (
+              <button
+                key={n}
+                onClick={() => {
+                  const to = new Date();
+                  const from = new Date();
+                  from.setDate(from.getDate() - (n - 1));
+                  setCustom({ from: localDayStr(from), to: localDayStr(to) });
+                }}
+                className="flex-1 h-10 rounded-full bg-secondary text-xs font-bold text-secondary-foreground tabular active:scale-95 transition-transform"
+              >
+                {t(n === 3 ? "last_3_days" : n === 7 ? "last_7_days" : "last_14_days")}
+              </button>
+            ))}
           </div>
           <p className="text-xs font-semibold text-muted-foreground text-center leading-relaxed">
             {t("date_from")}{" "}
@@ -290,13 +374,15 @@ export function ProgressScreen() {
         </div>
       </section>
 
-      {/* stats grid */}
+      {/* stats grid — period-aware averages + trend vs previous period */}
       <div className="grid grid-cols-2 gap-3">
         <StatCard
-          icon={<TrendingUp className="size-3.5" />}
-          label={t("weekly_avg")}
-          value={fmtW(weeklyAvg)}
-          unit={unit}
+          icon={<Scale className="size-3.5" />}
+          label={t("avg_weight_period")}
+          value={stats.avgW != null ? fmtW(stats.avgW) : "—"}
+          unit={stats.avgW != null ? unit : undefined}
+          delta={stats.trend.weight ?? undefined}
+          invertDelta={data?.profile?.goalType !== "gain"}
         />
         <StatCard
           icon={<Scale className="size-3.5" />}
@@ -330,16 +416,27 @@ export function ProgressScreen() {
         />
       </div>
 
-      {/* weekly calories */}
+      {/* weekly calories — average follows the selected period */}
       <section className="nutra-card p-5" aria-label={t("avg_kcal")}>
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-sm font-bold flex items-center gap-2">
             <Flame className="size-4 text-negative" />
             {t("avg_kcal")}
           </h2>
-          <span className="nutra-chip bg-secondary text-secondary-foreground tabular">
-            {nf(avgKcal)} / {nf(kcalGoal)} {t("kcal")}
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            <span className="nutra-chip bg-secondary text-secondary-foreground tabular">
+              {nf(stats.avgKcal)} / {nf(kcalGoal)} {t("kcal")}
+            </span>
+            {stats.trend.kcal != null && stats.trend.kcal !== 0 && (
+              <span className="flex items-center gap-1 text-[10px] font-bold tabular text-muted-foreground">
+                {stats.trend.kcal > 0 ? <TrendingUp className="size-3 text-negative" /> : <TrendingDown className="size-3 text-positive" />}
+                <span className={stats.trend.kcal > 0 ? "text-negative" : "text-positive"}>
+                  {stats.trend.kcal > 0 ? "+" : ""}{nf(stats.trend.kcal)}
+                </span>
+                {t("vs_prev_period")}
+              </span>
+            )}
+          </div>
         </div>
         <div className="h-[150px] mt-3" dir="ltr">
           <ResponsiveContainer width="100%" height="100%">
@@ -375,21 +472,21 @@ export function ProgressScreen() {
         </div>
       </section>
 
-      {/* macro + water averages */}
+      {/* macro + water averages — follow the selected period */}
       <div className="grid grid-cols-1 gap-3">
         <section className="nutra-card p-5">
           <h2 className="text-sm font-bold mb-3">{t("avg_macros")}</h2>
           <MacroBar
-            protein={data?.macroAvg.protein ?? 0}
-            carbs={data?.macroAvg.carbs ?? 0}
-            fat={data?.macroAvg.fat ?? 0}
+            protein={stats.macroAvg.protein}
+            carbs={stats.macroAvg.carbs}
+            fat={stats.macroAvg.fat}
           />
           <div className="mt-2.5 grid grid-cols-3 text-center">
             {(
               [
-                ["protein", data?.macroAvg.protein ?? 0, "var(--protein)"],
-                ["carbs", data?.macroAvg.carbs ?? 0, "var(--carbs)"],
-                ["fat", data?.macroAvg.fat ?? 0, "var(--fat)"],
+                ["protein", stats.macroAvg.protein, "var(--protein)"],
+                ["carbs", stats.macroAvg.carbs, "var(--carbs)"],
+                ["fat", stats.macroAvg.fat, "var(--fat)"],
               ] as const
             ).map(([key, v, color]) => (
               <div key={key} className="flex flex-col gap-0.5">
@@ -412,13 +509,20 @@ export function ProgressScreen() {
           <div className="flex-1">
             <p className="text-xs font-medium text-muted-foreground">{t("avg_water")}</p>
             <p className="text-lg font-bold tabular">
-              {nf((data?.waterAvg ?? 0) / 1000, 1)}
+              {nf(stats.avgWater / 1000, 1)}
               <span className="text-xs font-semibold text-muted-foreground"> {t("liter")}</span>
             </p>
+            {stats.trend.water != null && stats.trend.water !== 0 && (
+              <p className="text-[10px] font-bold tabular text-muted-foreground mt-0.5 flex items-center gap-1">
+                {stats.trend.water > 0 ? <TrendingUp className="size-3 text-water" /> : <TrendingDown className="size-3 text-water" />}
+                <span>{stats.trend.water > 0 ? "+" : ""}{nf(stats.trend.water / 1000, 1)} {t("liter")}</span>
+                {t("vs_prev_period")}
+              </p>
+            )}
           </div>
           <div className="text-end">
             <p className="text-xs font-medium text-muted-foreground">{t("logged_days")}</p>
-            <p className="text-lg font-bold tabular">{nf(data?.loggedDays30 ?? 0)}</p>
+            <p className="text-lg font-bold tabular">{nf(stats.loggedDays)}</p>
           </div>
         </section>
       </div>
