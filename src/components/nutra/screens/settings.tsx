@@ -2,9 +2,20 @@
 
 import React, { useState } from "react";
 import { useTheme } from "next-themes";
-import { Calculator, Check, RotateCcw, Sparkles } from "lucide-react";
+import { Calculator, Check, RotateCcw, Sparkles, LogOut } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useProfile, useUpdateProfile, useDemoReset, useWeight } from "@/lib/api";
+import { useAppStore } from "@/lib/store";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { suggestedKcal, suggestedMacros } from "@/lib/nutrition";
 import { Segmented } from "../segmented";
 import { toast } from "sonner";
@@ -34,6 +45,8 @@ function SettingsForm({ profile }: { profile: Profile }) {
   const { data: weights } = useWeight();
   const update = useUpdateProfile();
   const resetDemo = useDemoReset();
+  const lockApp = useAppStore((s) => s.lockApp);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   const [form, setForm] = useState({
     displayName: profile.displayName ?? "",
@@ -296,6 +309,21 @@ function SettingsForm({ profile }: { profile: Profile }) {
         </button>
       </section>
 
+      {/* log out */}
+      <section className="nutra-card p-5 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">{t("logout")}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("logout_hint")}</p>
+        </div>
+        <button
+          onClick={() => setConfirmLogout(true)}
+          className="size-11 shrink-0 grid place-items-center rounded-full bg-secondary hover:bg-negative/10 hover:text-negative transition-colors"
+          aria-label={t("logout")}
+        >
+          <LogOut className="size-5" />
+        </button>
+      </section>
+
       <button
         onClick={save}
         disabled={update.isPending}
@@ -303,6 +331,30 @@ function SettingsForm({ profile }: { profile: Profile }) {
       >
         {update.isPending ? "…" : t("save")}
       </button>
+
+      {/* log out confirmation */}
+      <AlertDialog open={confirmLogout} onOpenChange={setConfirmLogout}>
+        <AlertDialogContent className="max-w-sm mx-auto rounded-[24px]">
+          <AlertDialogHeader className="sm:text-center">
+            <AlertDialogTitle>{t("logout_q")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("logout_desc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row gap-2 sm:justify-center">
+            <AlertDialogAction className="h-12 px-6 rounded-full bg-primary text-primary-foreground font-bold">
+              {t("cancel")}
+            </AlertDialogAction>
+            <AlertDialogCancel
+              onClick={() => {
+                setConfirmLogout(false);
+                lockApp();
+              }}
+              className="h-12 px-6 rounded-full bg-secondary text-negative font-bold border-none mt-0"
+            >
+              {t("logout")}
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

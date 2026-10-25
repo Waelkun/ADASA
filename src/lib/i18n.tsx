@@ -313,6 +313,23 @@ const dict = {
   },
   onb_start: { ar: "ابدأ", en: "Start" },
   onb_back: { ar: "رجوع", en: "Back" },
+  logout: { ar: "تسجيل الخروج", en: "Log out" },
+  logout_hint: {
+    ar: "بينقفل التطبيق، وبياناتك تضل محفوظة عالجهاز",
+    en: "Locks the app — your data stays saved on this device",
+  },
+  logout_q: { ar: "تسجيل الخروج؟", en: "Log out?" },
+  logout_desc: {
+    ar: "رح ينقفل التطبيق، بس كل بياناتك تضل محفوظة عالجهاز وتقدر ترجع تدخل وقت ما بدك.",
+    en: "The app will lock, but all your data stays saved on this device — you can sign back in anytime.",
+  },
+  login: { ar: "تسجيل الدخول", en: "Sign in" },
+  welcome_back: { ar: "أهلاً بعودتك", en: "Welcome back" },
+  lock_sub: {
+    ar: "سجّل دخولك لترجع لتطبيقك — كل بياناتك محفوظة عالجهاز",
+    en: "Sign in to get back to your app — all your data stays saved on this device",
+  },
+  login_done: { ar: "رجّعناك لتطبيقك 👋", en: "Welcome back 👋" },
 } as const;
 
 export type DictKey = keyof typeof dict;

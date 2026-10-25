@@ -17,6 +17,9 @@ export type SheetKind =
 /** tabs that live in the main bottom dock */
 const NAV_TABS: TabId[] = ["today", "log", "goals", "progress", "workouts"];
 
+/** localStorage: "1" = session locked (logged out) — data is never touched */
+const LOCK_KEY = "nutra-locked";
+
 interface QuickAddState {
   tab: TabId;
   /** last main-nav tab — the nav bubble stays here while Settings is open */
@@ -28,10 +31,16 @@ interface QuickAddState {
   selectedDay: string | null;
   /** initial meal for the meal-builder sheet */
   sheetMeal: MealType | null;
+  /** session lock (log out) — app stays locked across refreshes */
+  locked: boolean;
   setTab: (t: TabId) => void;
   openSheet: (s: SheetKind, opts?: { workoutDate?: string; mealType?: MealType }) => void;
   closeSheet: () => void;
   setSelectedDay: (d: string | null) => void;
+  /** log out: lock the app (data stays), reset transient UI state */
+  lockApp: () => void;
+  /** sign back in: unlock the app */
+  unlockApp: () => void;
 }
 
 export const useAppStore = create<QuickAddState>((set) => ({
@@ -41,6 +50,7 @@ export const useAppStore = create<QuickAddState>((set) => ({
   workoutDate: null,
   selectedDay: null,
   sheetMeal: null,
+  locked: false,
   setTab: (tab) =>
     set((s) => ({
       tab,
@@ -51,4 +61,20 @@ export const useAppStore = create<QuickAddState>((set) => ({
     set({ sheet, workoutDate: opts?.workoutDate ?? null, sheetMeal: opts?.mealType ?? null }),
   closeSheet: () => set({ sheet: null }),
   setSelectedDay: (selectedDay) => set({ selectedDay }),
+  lockApp: () => {
+    if (typeof window !== "undefined") window.localStorage.setItem(LOCK_KEY, "1");
+    set({
+      locked: true,
+      sheet: null,
+      tab: "today",
+      lastNavTab: "today",
+      selectedDay: null,
+      workoutDate: null,
+      sheetMeal: null,
+    });
+  },
+  unlockApp: () => {
+    if (typeof window !== "undefined") window.localStorage.removeItem(LOCK_KEY);
+    set({ locked: false });
+  },
 }));

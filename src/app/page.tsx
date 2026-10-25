@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Settings, Moon, SunMedium, Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -21,6 +21,7 @@ import { ScanSheet } from "@/components/nutra/sheets/scan-sheet";
 import { FoodConfirmSheet } from "@/components/nutra/sheets/food-confirm-sheet";
 import { MealBuilderSheet } from "@/components/nutra/sheets/meal-builder-sheet";
 import { OnboardingScreen } from "@/components/nutra/onboarding";
+import { LockScreen } from "@/components/nutra/lock-screen";
 import { Splash, useColdStart } from "@/components/nutra/splash";
 import { kcalSanityOk } from "@/lib/nutrition";
 
@@ -103,9 +104,28 @@ function AppShell() {
   const setTab = useAppStore((s) => s.setTab);
   const sheet = useAppStore((s) => s.sheet);
   const closeSheet = useAppStore((s) => s.closeSheet);
+  const locked = useAppStore((s) => s.locked);
   const { data: today, isLoading } = useToday();
 
   const [pendingFood, setPendingFood] = useState<PendingFood | null>(null);
+
+  // session lock (log out) — persisted in localStorage, hydrated after mount
+  // (async microtask, same pattern as the i18n hydration) so a locked app
+  // never renders any screen — not even a flash — before the session is known
+  const [sessionKnown, setSessionKnown] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      if (window.localStorage.getItem("nutra-locked") === "1") {
+        useAppStore.getState().lockApp();
+      }
+      setSessionKnown(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // cold-start splash: ≥1.6s AND profile readiness (cap 6s), refresh skips it
   const [splashOff, setSplashOff] = useState(false);
@@ -115,13 +135,22 @@ function AppShell() {
     <Splash ready={splashReady} onDone={() => setSplashOff(true)} />
   ) : null;
 
-  // wait for the profile to load before routing — onboarding decision
+  // wait for the session + profile before routing — onboarding decision
   // (persisted on the profile, so an immediate refresh keeps showing it)
-  if (isLoading) {
+  if (!sessionKnown || isLoading) {
     return (
       <>
         {splash}
         <BootLoader />
+      </>
+    );
+  }
+  // logged out: lock screen until the user signs back in (data untouched)
+  if (locked) {
+    return (
+      <>
+        {splash}
+        <LockScreen name={today?.profile?.displayName ?? ""} />
       </>
     );
   }

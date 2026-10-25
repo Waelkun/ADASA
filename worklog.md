@@ -85,3 +85,19 @@ Stage Summary:
 - New files: src/lib/date-ar.ts, src/components/nutra/onboarding.tsx, src/components/nutra/screens/goals.tsx, src/components/nutra/splash.tsx.
 - Edited: prisma schema (+onboardingCompleted nullable), api/profile (passthrough fix + flag), api/scan (note 500), i18n, store (+lastNavTab), types (+goals tab, +onboardingCompleted), page/layout, globals.css, bottom-nav, scan/food-confirm/quick-sheets/workout-sheet/edit-grams/meal-builder sheets, log/progress/settings/workouts screens.
 - DB: one nullable column added; existing account backfilled onboardingCompleted=true; goalWeightKg restored to 78 after the PUT bug wiped it. No deploys, files only.
+
+---
+Task ID: 16
+Agent: main (Z.ai)
+Task: Two user-reported fixes: (1) bottom-nav active bubble mirrored in RTL — Today (rightmost) tab showed the bubble at the far left under Workouts; (2) no place to log out.
+
+Work Log:
+- Bug root cause: bubble resting position used physical `left: calc(... * i / 5 ...)` from tab index, but in RTL the flex row places tab 0 at the far RIGHT → index math must be mirrored. Drag path (clientX/offsetLeft/getBoundingClientRect) is fully physical and was already correct.
+- bottom-nav.tsx: cellLeft(i) now uses `isRTL ? TABS.length - 1 - i : i` (from useI18n) — works in both ar/RTL and en/LTR; no changes to drag/press logic.
+- Logout (session-lock pattern, zero data loss): store.ts +locked/lockApp/unlockApp persisted via localStorage key `nutra-locked` (lockApp also resets tab→today, selectedDay, sheet state); i18n +9 keys (logout/login/welcome_back/lock_sub/confirm texts ar+en); new lock-screen.tsx (logo + lock badge, welcome-back + profile name, sign-in button); AppShell hydrates the lock post-mount via queueMicrotask (lint-safe, same pattern as i18n hydration) gated by sessionKnown so a locked app never flashes content; settings.tsx + logout row (LogOut icon, negative hover) below demo-reset + AlertDialog confirm (إلغاء / تسجيل الخروج) matching the meal-builder dialog pattern.
+- Verification (agent-browser 390x844): bubble measured under the correct tab for ALL 5 tabs in RTL (exact center match each: اليوم340/السجل287/الأهداف233/التقدم179/التمارين126) and under Today in EN/LTR (cx50); logout row → dialog → lock screen "أهلاً بعودتك، أحمد 👋" + nutra-locked=1; reload stays locked (no content flash); sign-in → app restored on Today with header greeting + ring intact, nutra-locked cleared; no console/page errors.
+
+Stage Summary:
+- tsc src/ 0 errors; eslint changed files 0 problems; page 200.
+- Bubble fix is one mirrored-index line — drag behavior untouched; EN/LTR unaffected.
+- Logout = local session lock (privacy-style): locks app across refreshes, deletes nothing; sign back in returns exactly where data left off. Key files: bottom-nav.tsx, store.ts, i18n.tsx, lock-screen.tsx (new), page.tsx, settings.tsx.

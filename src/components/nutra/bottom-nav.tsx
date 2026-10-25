@@ -42,7 +42,7 @@ function haptic(ms = 10) {
  *   the page switches live, and it snaps to the nearest tab on release (vibrate(10))
  */
 export function BottomNav() {
-  const { t } = useI18n();
+  const { t, isRTL } = useI18n();
   const tab = useAppStore((s) => s.tab);
   const setTab = useAppStore((s) => s.setTab);
   const openSheet = useAppStore((s) => s.openSheet);
@@ -150,8 +150,12 @@ export function BottomNav() {
     }
   };
 
-  // pure-CSS cell geometry (5 equal cells inside the capsule padding)
-  const cellLeft = (i: number) => `calc((100% - ${2 * PAD}px) * ${i} / 5 + ${PAD}px)`;
+  // pure-CSS cell geometry (5 equal cells inside the capsule padding).
+  // `left` is a PHYSICAL coordinate, but in RTL tab 0 sits at the far RIGHT
+  // of the flex row → mirror the index so the bubble lands under the right
+  // tab in both directions (drag math is already fully physical).
+  const cellLeft = (i: number) =>
+    `calc((100% - ${2 * PAD}px) * ${isRTL ? TABS.length - 1 - i : i} / 5 + ${PAD}px)`;
   const cellWidth = `calc((100% - ${2 * PAD}px) / 5)`;
 
   return (
