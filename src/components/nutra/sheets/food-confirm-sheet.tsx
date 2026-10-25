@@ -168,12 +168,21 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
   return (
     <div className="flex flex-col">
       <div className="max-h-[62vh] overflow-y-auto nutra-scroll flex flex-col gap-4">
-        {/* scan meta */}
+        {/* scan meta — confidence /100, colored by value */}
         {food.source === "scan" && (
           <div className="flex items-center justify-between">
-            <span className="nutra-chip bg-primary/12 text-primary gap-1">
+            <span
+              className={cn(
+                "nutra-chip gap-1",
+                (food.confidence ?? 1) >= 0.8
+                  ? "bg-positive/12 text-positive"
+                  : (food.confidence ?? 1) >= 0.5
+                    ? "bg-carbs/12 text-carbs"
+                    : "bg-negative/12 text-negative"
+              )}
+            >
               <Sparkles className="size-3.5" />
-              {t("source_scan")} · {t("confidence")} {Math.round((food.confidence ?? 1) * 100)}%
+              {t("source_scan")} · {t("confidence")} {Math.round((food.confidence ?? 1) * 100)}/100
             </span>
           </div>
         )}
