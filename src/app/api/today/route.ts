@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getProfile, isDayStr, todayStr, calcStreak } from "@/lib/server";
+import { effectiveKcalGoal } from "@/lib/nutrition";
 import type { MealType, SourceType, Workout } from "@/lib/types";
 
 /** GET /api/today?date=YYYY-MM-DD — aggregated Today screen payload */
@@ -34,8 +35,17 @@ export async function GET(req: NextRequest) {
   totals.carbs = Math.round(totals.carbs * 10) / 10;
   totals.fat = Math.round(totals.fat * 10) / 10;
 
+  // zigzag: the ring (and every kcal-goal display on Today) follows the
+  // day's target from the active plan; the stored base goal is untouched
+  const kcalGoalToday = effectiveKcalGoal(
+    profile.kcalGoal,
+    profile.zigzagPlan,
+    profile.zigzagStart,
+    date
+  );
+
   return Response.json({
-    profile,
+    profile: { ...profile, kcalGoal: kcalGoalToday, kcalGoalBase: profile.kcalGoal },
     logs: logs.map((l) => ({
       ...l,
       loggedAt: l.loggedAt.toISOString(),

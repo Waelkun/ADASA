@@ -53,13 +53,21 @@ export function useToday(day?: string) {
   return useQuery<TodayPayload>({
     queryKey: ["today", d],
     queryFn: () => jget<TodayPayload>(`/api/today?date=${d}`),
+    // transient pooler/network blips must not break the app (item 29)
+    retry: 3,
+    retryDelay: (attempt) => 1000 + attempt * 1500,
   });
 }
 
 /* ---------- profile ---------- */
 
 export function useProfile() {
-  return useQuery<Profile>({ queryKey: ["profile"], queryFn: () => jget<Profile>("/api/profile") });
+  return useQuery<Profile>({
+    queryKey: ["profile"],
+    queryFn: () => jget<Profile>("/api/profile"),
+    retry: 3,
+    retryDelay: (attempt) => 1000 + attempt * 1500,
+  });
 }
 
 export function useUpdateProfile() {

@@ -56,6 +56,19 @@ export async function PUT(req: NextRequest) {
               : undefined,
         // welcome screen completion (only ever set to true here)
         onboardingCompleted: body.onboardingCompleted === true ? true : undefined,
+        // zigzag plan (زجزاج) — null clears; undefined = leave as-is
+        zigzagPlan:
+          body.zigzagPlan === undefined
+            ? undefined
+            : ["plan1", "plan2"].includes(body.zigzagPlan)
+              ? body.zigzagPlan
+              : null,
+        zigzagStart:
+          body.zigzagStart === undefined
+            ? undefined
+            : typeof body.zigzagStart === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.zigzagStart)
+              ? body.zigzagStart
+              : null,
       },
     });
     return Response.json(updated);

@@ -69,3 +69,50 @@ export const kJtokcal = (kj: number) => kj / 4.184;
 /** kg <-> lb */
 export const kgToLb = (kg: number) => kg * 2.20462;
 export const lbToKg = (lb: number) => lb / 2.20462;
+
+/* ================= calorie zigzag (زجزاج) ================= */
+
+/**
+ * 7-day factor cycles — each sums to exactly 7.0 so the weekly total is
+ * always 7 × the base target.
+ */
+export const ZIGZAG_FACTORS: Record<"plan1" | "plan2", number[]> = {
+  // plan 1 — two high days (+15% ×2) balanced by five easy days
+  plan1: [1.15, 1.15, 0.94, 0.94, 0.94, 0.94, 0.94],
+  // plan 2 — gradient: builds up through the week
+  plan2: [0.85, 0.9, 0.95, 1.0, 1.05, 1.1, 1.15],
+};
+
+const DAY_MS = 86400000;
+
+/** days between two YYYY-MM-DD strings (b - a) */
+export function daysBetween(a: string, b: string): number {
+  return Math.round(
+    (new Date(b + "T00:00:00").getTime() - new Date(a + "T00:00:00").getTime()) / DAY_MS
+  );
+}
+
+/** plan factor for a date — null when no plan / before the start day */
+export function zigzagFactor(
+  plan: string | null | undefined,
+  start: string | null | undefined,
+  date: string
+): number | null {
+  if (plan !== "plan1" && plan !== "plan2") return null;
+  if (!start || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return null;
+  const idx = daysBetween(start, date);
+  if (idx < 0) return null;
+  return ZIGZAG_FACTORS[plan][idx % 7];
+}
+
+/** the kcal goal that applies to a specific day (base × plan factor) */
+export function effectiveKcalGoal(
+  baseKcal: number,
+  plan: string | null | undefined,
+  start: string | null | undefined,
+  date: string
+): number {
+  const f = zigzagFactor(plan, start, date);
+  // plain rounding keeps the weekly sum ≈ 7 × base (factors sum to exactly 7)
+  return f == null ? baseKcal : Math.round(baseKcal * f);
+}

@@ -26,6 +26,9 @@ model Profile {
   units          String   @default("metric") // metric | imperial
   // additive (nullable): welcome screen shown once per account; null = not shown yet
   onboardingCompleted Boolean?
+  // additive (nullable): calorie zigzag plan — null/"plan1"/"plan2" + cycle start day
+  zigzagPlan  String?
+  zigzagStart String? // YYYY-MM-DD
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

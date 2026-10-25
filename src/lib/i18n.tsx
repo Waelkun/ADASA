@@ -299,8 +299,50 @@ const dict = {
   edit_goals: { ar: "تعديل الأهداف", en: "Edit goals" },
   goals_now: { ar: "الحالي", en: "Current" },
   goals_left: { ar: "متبقي", en: "left" },
-  goals_weight_hint: { ar: "حدد وزن الهدف من الإعدادات", en: "Set a goal weight in Settings" },
+  goals_weight_hint: { ar: "حدد وزن الهدف من تبويب الأهداف", en: "Set a goal weight in Goals" },
   goals_of: { ar: "من الهدف", en: "of goal" },
+
+  // macro split editor (22+23)
+  macro_split_editor: { ar: "توزيعة الماكروز", en: "Macro split" },
+  kcal_from_macros: { ar: "من الماكروز", en: "from macros" },
+  kcal_formula: { ar: "بروتين×4 + كربوهيدرات×4 + دهون×9", en: "protein×4 + carbohydrate×4 + fat×9" },
+  lock_kcal: { ar: "تثبيت السعرات", en: "Lock calories" },
+  macro_editor_hint: {
+    ar: "بوضع النسب مع التثبيت: أي زيادة بنسبة تنقص من الباقي والمجموع دايماً 100%",
+    en: "In percent mode with lock: raising one percentage takes from the rest — the total is always 100%",
+  },
+
+  // calorie calculator (24)
+  rate_lose025: { ar: "خسارة 0.25 كغ/أسبوع", en: "Lose 0.25 kg/wk" },
+  rate_lose05: { ar: "خسارة 0.5 كغ/أسبوع", en: "Lose 0.5 kg/wk" },
+  rate_lose1: { ar: "خسارة 1 كغ/أسبوع", en: "Lose 1 kg/wk" },
+  adopt_and_save: { ar: "اعتمد وحفظ", en: "Adopt & save" },
+  goal_adopted: { ar: "تم اعتماد الهدف — تحدّث بكل الشاشات", en: "Goal adopted — updated everywhere" },
+  min_kcal_warning: {
+    ar: "الهدف تحت الحد الأدنى الصحي — رفعناه للحد الأدنى",
+    en: "Below the healthy minimum — raised to the minimum",
+  },
+
+  // zigzag (25)
+  zigzag_title: { ar: "زجزاج السعرات", en: "Calorie zigzag" },
+  zigzag_fixed: { ar: "ثابت (بلا خطة)", en: "Fixed (no plan)" },
+  zigzag_plan1: { ar: "خطة 1 — يومان مرتفعان", en: "Plan 1 — two high days" },
+  zigzag_plan1_desc: {
+    ar: "يومان بعالي (+15%) والباقي أخف — مجموع الأسبوع ما يتغير",
+    en: "Two high days (+15%), five easier days — same weekly total",
+  },
+  zigzag_plan2: { ar: "خطة 2 — تدرّج", en: "Plan 2 — gradient" },
+  zigzag_plan2_desc: {
+    ar: "يبدأ أخف ويتدرج أعلى خلال الأسبوع",
+    en: "Starts lighter and ramps up through the week",
+  },
+  zigzag_adopt: { ar: "اعتمد الخطة", en: "Adopt plan" },
+  zigzag_adopted: { ar: "تم اعتماد الخطة — حلقة اليوم تتبع هدف اليوم", en: "Plan adopted — Today ring follows the day's target" },
+  zigzag_stop: { ar: "إيقاف", en: "Stop" },
+  zigzag_stopped: { ar: "تم إيقاف الخطة", en: "Plan stopped" },
+  zigzag_week_total: { ar: "مجموع الأسبوع", en: "Week total" },
+  zigzag_started: { ar: "بدأت", en: "Started" },
+  tomorrow: { ar: "بكرة", en: "Tomorrow" },
 
   // toasts
   added_toast: { ar: "تمت الإضافة إلى السجل", en: "Added to log" },
@@ -308,6 +350,11 @@ const dict = {
   saved_toast: { ar: "تم الحفظ", en: "Saved" },
   error_toast: { ar: "حدث خطأ، حاول مجدداً", en: "Something went wrong" },
   favorite_toast: { ar: "تم تحديث المفضلة", en: "Favorites updated" },
+  conn_error: { ar: "تعذر الاتصال", en: "Connection failed" },
+  conn_error_hint: {
+    ar: "تحقق من الإنترنت وجرب مجدداً — بياناتك محفوظة وما انمسحت",
+    en: "Check your connection and try again — your data is safe",
+  },
 
   // onboarding (welcome screen)
   onb_title: { ar: "أهلاً بك في عدسة", en: "Welcome to Adasa" },

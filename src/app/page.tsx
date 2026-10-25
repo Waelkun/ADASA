@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Settings, Moon, SunMedium, Loader2 } from "lucide-react";
+import { Settings, Moon, SunMedium, Loader2, WifiOff } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useI18n } from "@/lib/i18n";
 import { useAppStore } from "@/lib/store";
@@ -105,7 +105,7 @@ function AppShell() {
   const sheet = useAppStore((s) => s.sheet);
   const closeSheet = useAppStore((s) => s.closeSheet);
   const locked = useAppStore((s) => s.locked);
-  const { data: today, isLoading } = useToday();
+  const { data: today, isLoading, isError, refetch } = useToday();
 
   const [pendingFood, setPendingFood] = useState<PendingFood | null>(null);
 
@@ -143,6 +143,25 @@ function AppShell() {
         {splash}
         <BootLoader />
       </>
+    );
+  }
+  // connection failure after retries: explicit retry screen — never fall
+  // through to the welcome screen or an empty app by mistake (item 29)
+  if (isError) {
+    return (
+      <div className="min-h-dvh bg-background grid place-items-center px-6">
+        <div className="nutra-card p-6 flex flex-col items-center gap-3 text-center max-w-xs">
+          <WifiOff className="size-10 text-muted-foreground" />
+          <p className="text-sm font-bold">{t("conn_error")}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">{t("conn_error_hint")}</p>
+          <button
+            onClick={() => refetch()}
+            className="mt-1 h-11 px-6 rounded-full bg-primary text-primary-foreground text-sm font-bold active:scale-95 transition-transform"
+          >
+            {t("retry")}
+          </button>
+        </div>
+      </div>
     );
   }
   // logged out: lock screen until the user signs back in (data untouched)

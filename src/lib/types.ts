@@ -22,6 +22,12 @@ export interface Profile {
   units: string;
   /** null = welcome screen not completed yet (additive, old rows may lack it) */
   onboardingCompleted?: boolean | null;
+  /** zigzag day target (Today payload: effective goal) — base is in kcalGoalBase */
+  kcalGoalBase?: number;
+  /** calorie zigzag plan (additive) — "plan1" | "plan2" | null */
+  zigzagPlan?: string | null;
+  /** zigzag cycle start day YYYY-MM-DD (additive) */
+  zigzagStart?: string | null;
 }
 
 export interface Food {

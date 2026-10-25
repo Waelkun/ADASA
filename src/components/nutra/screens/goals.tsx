@@ -1,12 +1,16 @@
 "use client";
 
-import React from "react";
-import { Flame, GlassWater, Dumbbell, Scale, Target, PencilLine } from "lucide-react";
+import React, { useState } from "react";
+import { Flame, GlassWater, Dumbbell, Scale, Target, Check } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { useToday, useWater, useWeight, useWorkouts, localDayStr } from "@/lib/api";
-import { useAppStore } from "@/lib/store";
+import { useToday, useWater, useWeight, useWorkouts, useUpdateProfile, localDayStr } from "@/lib/api";
 import { kgToLb } from "@/lib/nutrition";
+import { NumInput } from "../num-input";
+import { MacroSplitEditor } from "../macro-split-editor";
+import { CalorieCalculator } from "../calorie-calculator";
+import { ZigzagPlanCard } from "../zigzag-plan";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 function GoalRow({
@@ -51,17 +55,34 @@ function GoalRow({
   );
 }
 
-/** الأهداف tab — today's progress against every daily target + goal weight */
+/** الأهداف tab — progress vs every daily target + the goal editors (21-25) */
 export function GoalsScreen() {
   const { t, nf } = useI18n();
-  const setTab = useAppStore((s) => s.setTab);
   const { data: today, isLoading } = useToday();
   const { data: water } = useWater();
   const { data: weights } = useWeight();
+  const update = useUpdateProfile();
   const month = localDayStr().slice(0, 7);
   const { data: workouts } = useWorkouts(month);
 
-  if (isLoading) {
+  // daily-goal editors (water / goal weight / workouts per week)
+  const [waterGoalL, setWaterGoalL] = useState<number | "">(2.8);
+  const [goalWeight, setGoalWeight] = useState<number | "">("");
+  const [workoutsWk, setWorkoutsWk] = useState<number | "">(4);
+  const [editorsInit, setEditorsInit] = useState(false);
+  // sync prefills once when the profile arrives (adjust-state-during-render pattern)
+  const [prevProfile, setPrevProfile] = useState(today?.profile);
+  if (prevProfile !== today?.profile) {
+    setPrevProfile(today?.profile);
+    if (today?.profile && !editorsInit) {
+      setEditorsInit(true);
+      setWaterGoalL(today.profile.waterGoalMl / 1000);
+      setGoalWeight(today.profile.goalWeightKg ?? "");
+      setWorkoutsWk(today.profile.workoutsPerWeek);
+    }
+  }
+
+  if (isLoading || !today?.profile) {
     return (
       <div className="flex flex-col gap-3">
         {[0, 1, 2, 3, 4].map((i) => (
@@ -71,37 +92,48 @@ export function GoalsScreen() {
     );
   }
 
-  const profile = today?.profile;
-  const totals = today?.totals ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 };
-  const imperial = profile?.units === "imperial";
+  const profile = today.profile;
+  const totals = today.totals ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  const imperial = profile.units === "imperial";
 
   const waterTotal = water?.total ?? 0;
-  const waterGoal = profile?.waterGoalMl ?? 2800;
+  const waterGoal = profile.waterGoalMl ?? 2800;
   const thisWeek = workouts?.stats?.thisWeekCount ?? 0;
-  const weekTarget = profile?.workoutsPerWeek ?? 4;
+  const weekTarget = profile.workoutsPerWeek ?? 4;
 
   const latestW = weights?.length ? weights[weights.length - 1].weightKg : null;
-  const goalW = profile?.goalWeightKg ?? null;
+  const goalW = profile.goalWeightKg ?? null;
   const fmtW = (kg: number) => nf(imperial ? kgToLb(kg) : kg, 1);
   const wUnit = imperial ? t("lb") : t("kg");
+
+  const goalsDirty =
+    Math.round((Number(waterGoalL) || 0) * 1000) !== profile.waterGoalMl ||
+    (goalWeight === "" ? profile.goalWeightKg != null : goalWeight !== profile.goalWeightKg) ||
+    Number(workoutsWk || 0) !== profile.workoutsPerWeek;
+
+  const saveGoals = () =>
+    update.mutate(
+      {
+        waterGoalMl: Math.round((Number(waterGoalL) || 2.8) * 1000),
+        goalWeightKg: goalWeight === "" ? null : Number(goalWeight),
+        workoutsPerWeek: Number(workoutsWk || 4),
+      },
+      {
+        onSuccess: () => toast.success(t("settings_saved")),
+        onError: () => toast.error(t("error_toast")),
+      }
+    );
 
   return (
     <div className="flex flex-col gap-3">
       {/* header */}
-      <div className="flex items-center justify-between px-1 pt-1">
+      <div className="flex items-center gap-2 px-1 pt-1">
         <h1 className="flex items-center gap-2 text-base font-extrabold">
           <span className="size-9 rounded-2xl bg-primary/12 text-primary grid place-items-center">
             <Target className="size-5" />
           </span>
           {t("tab_goals")}
         </h1>
-        <button
-          onClick={() => setTab("settings")}
-          className="nutra-chip min-h-[44px] px-4 bg-secondary text-secondary-foreground gap-1.5 active:scale-95 transition-transform"
-        >
-          <PencilLine className="size-3.5" />
-          {t("edit_goals")}
-        </button>
       </div>
 
       <GoalRow
@@ -185,6 +217,97 @@ export function GoalsScreen() {
           <span className="nutra-chip bg-positive/12 text-positive">✓</span>
         )}
       </div>
+
+      {/* ===== goal editors (moved from Settings — item 21) ===== */}
+      <section className="nutra-card p-5 flex flex-col gap-4">
+        <h2 className="text-sm font-bold">{t("daily_goals")}</h2>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold">{t("water_goal")}</span>
+          <div className="relative w-32">
+            <NumInput
+              value={waterGoalL}
+              onChange={setWaterGoalL}
+              min={0.5}
+              max={8}
+              decimals={2}
+              ariaLabel={t("water_goal")}
+              className="w-full h-11 bg-secondary px-3 text-center"
+            />
+            <span className="absolute end-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground pointer-events-none">{t("liter")}</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold">{t("goal_weight")}</span>
+          <div className="relative w-32">
+            <NumInput
+              value={goalWeight}
+              onChange={setGoalWeight}
+              min={30}
+              max={300}
+              decimals={1}
+              allowEmpty
+              ariaLabel={t("goal_weight")}
+              className="w-full h-11 bg-secondary px-3 text-center"
+            />
+            <span className="absolute end-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground pointer-events-none">{imperial ? t("lb") : t("kg")}</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold">{t("workouts_target")}</span>
+          <NumInput
+            value={workoutsWk}
+            onChange={setWorkoutsWk}
+            min={1}
+            max={7}
+            inputMode="numeric"
+            ariaLabel={t("workouts_target")}
+            className="w-32 h-11 bg-secondary px-3 text-center"
+          />
+        </div>
+        <button
+          onClick={() =>
+            update.mutate(
+              {
+                waterGoalMl: Math.round((Number(waterGoalL) || 2.8) * 1000),
+                goalWeightKg: goalWeight === "" ? null : Number(goalWeight),
+                workoutsPerWeek: Number(workoutsWk || 4),
+              },
+              {
+                onSuccess: () => toast.success(t("settings_saved")),
+                onError: () => toast.error(t("error_toast")),
+              }
+            )
+          }
+          disabled={
+            update.isPending ||
+            (Math.round((Number(waterGoalL) || 0) * 1000) === profile.waterGoalMl &&
+              (goalWeight === "" ? profile.goalWeightKg == null : goalWeight === profile.goalWeightKg) &&
+              Number(workoutsWk || 0) === profile.workoutsPerWeek)
+          }
+          className="h-12 rounded-full bg-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform disabled:opacity-40 shadow-lg shadow-primary/25"
+        >
+          <Check className="size-4" />
+          {t("save")}
+        </button>
+      </section>
+
+      {/* macro split editor (kcal from macros + percent ↔ grams) — base goal */}
+      <MacroSplitEditor
+        kcalGoal={profile.kcalGoalBase ?? profile.kcalGoal}
+        proteinG={profile.proteinG}
+        carbsG={profile.carbsG}
+        fatG={profile.fatG}
+      />
+
+      {/* calorie calculator (Mifflin-St Jeor) */}
+      <CalorieCalculator profile={profile} />
+
+      {/* calorie zigzag — always on the BASE target */}
+      <ZigzagPlanCard
+        baseKcal={profile.kcalGoalBase ?? profile.kcalGoal}
+        plan={profile.zigzagPlan ?? null}
+        start={profile.zigzagStart ?? null}
+      />
     </div>
   );
 }
