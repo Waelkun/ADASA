@@ -21,8 +21,6 @@ const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 const ANIM_MS = 260;
 /** px of movement before a press becomes a drag */
 const DRAG_SLOP = 6;
-/** capsule side padding (px-1.5 → 6px each side) */
-const PAD = 6;
 
 function haptic(ms = 10) {
   try {
@@ -55,8 +53,11 @@ export function BottomNav() {
   const capsuleRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  /** px override while the finger owns the bubble; null = CSS-calc cell position */
+  /** px override while the finger owns the bubble; null = measured cell position */
   const [dragBubble, setDragBubble] = useState<{ x: number; w: number } | null>(null);
+  /** measured resting position of the ACTIVE tab — always physical px from the
+   *  capsule's left edge (x = tabRect.left - pillRect.left), never index/percent/dir math */
+  const [restBubble, setRestBubble] = useState<{ x: number; w: number } | null>(null);
   const [pressed, setPressed] = useState(false);
   /** spring transition on; off while tracking the finger */
   const [anim, setAnim] = useState(true);
@@ -64,6 +65,28 @@ export function BottomNav() {
   const dragging = useRef(false);
   const suppressClick = useRef(false);
   const press = useRef<{ startX: number; baseX: number; w: number } | null>(null);
+
+  /** measure the active tab cell — the single source of truth for the bubble */
+  const measure = React.useCallback(() => {
+    const cap = capsuleRef.current;
+    const btn = tabRefs.current[activeIdx];
+    if (!cap || !btn) return;
+    const capR = cap.getBoundingClientRect();
+    const r = btn.getBoundingClientRect();
+    setRestBubble({ x: r.left - capR.left, w: r.width });
+  }, [activeIdx]);
+
+  // (re)measure on first render, on every tab/language switch, and on any
+  // element resize (window rotate, font swap, capsule width change)
+  React.useLayoutEffect(() => {
+    measure();
+    const cap = capsuleRef.current;
+    if (!cap || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => measure());
+    ro.observe(cap);
+    tabRefs.current.forEach((b) => b && ro.observe(b));
+    return () => ro.disconnect();
+  }, [measure, isRTL]);
 
   /** current tab index — read inside event handlers only */
   const curIdx = () => {
@@ -150,19 +173,14 @@ export function BottomNav() {
     }
   };
 
-  // pure-CSS cell geometry (5 equal cells inside the capsule padding).
-  // `left` is a PHYSICAL coordinate, but in RTL tab 0 sits at the far RIGHT
-  // of the flex row → mirror the index so the bubble lands under the right
-  // tab in both directions (drag math is already fully physical).
-  const cellLeft = (i: number) =>
-    `calc((100% - ${2 * PAD}px) * ${isRTL ? TABS.length - 1 - i : i} / 5 + ${PAD}px)`;
-  const cellWidth = `calc((100% - ${2 * PAD}px) / 5)`;
+  // bubble geometry: measured from the live DOM (physical px, left:0 anchor)
+  const bubble = dragBubble ?? restBubble ?? { x: 0, w: 0 };
 
   return (
     <nav aria-label="Main navigation" className="fixed bottom-0 inset-x-0 z-40">
       <div className="mx-auto max-w-md px-4 pb-[max(env(safe-area-inset-bottom),14px)]">
-        {/* centered group: glass capsule + separate + button (equal gap, same height) */}
-        <div className="flex items-center gap-3">
+        {/* centered group: glass capsule + separate + button (8px gap, same height) */}
+        <div className="flex items-center gap-2">
           <div
             ref={capsuleRef}
             onPointerDown={onPointerDown}
@@ -171,19 +189,18 @@ export function BottomNav() {
             onPointerCancel={endPointer}
             onLostPointerCapture={endPointer}
             style={{ touchAction: "none" }}
-            className="relative flex-1 min-w-0 h-16 rounded-full bg-card/70 backdrop-blur-xl border border-border shadow-[0_10px_32px_rgba(16,24,40,0.14)] overflow-hidden"
+            className="relative flex-1 min-w-0 h-16 rounded-full bg-card/70 backdrop-blur-[20px] backdrop-saturate-[1.8] border border-border shadow-[0_10px_32px_rgba(16,24,40,0.14)] overflow-hidden"
           >
-            {/* sliding active bubble (spring) */}
+            {/* sliding active bubble (spring) — physical x, explicit left:0 anchor */}
             <span
               aria-hidden
-              className="absolute top-2 bottom-2 rounded-full bg-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_8px_rgba(16,24,40,0.08)]"
+              className="absolute top-2 bottom-2 left-0 rounded-full bg-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_8px_rgba(16,24,40,0.08)]"
               style={{
-                left: dragBubble ? `${dragBubble.x}px` : cellLeft(activeIdx),
-                width: dragBubble ? `${dragBubble.w}px` : cellWidth,
+                width: `${bubble.w}px`,
                 zIndex: 0,
-                transform: pressed ? "scale(1.15)" : "scale(1)",
+                transform: `translateX(${bubble.x}px) scale(${pressed ? 1.15 : 1})`,
                 transition: anim
-                  ? `left ${ANIM_MS}ms ${SPRING}, width ${ANIM_MS}ms ${SPRING}, transform ${ANIM_MS}ms ${SPRING}`
+                  ? `transform ${ANIM_MS}ms ${SPRING}, width ${ANIM_MS}ms ${SPRING}`
                   : "none",
               }}
             />
@@ -223,7 +240,7 @@ export function BottomNav() {
           <button
             onClick={() => openSheet("quick-add")}
             aria-label={t("quick_add")}
-            className="size-16 shrink-0 rounded-full bg-primary/95 backdrop-blur-xl text-primary-foreground border border-white/25 shadow-[0_10px_28px_rgba(16,185,129,0.4)] grid place-items-center active:scale-95 transition-transform"
+            className="size-16 shrink-0 rounded-full bg-primary/95 backdrop-blur-[20px] backdrop-saturate-[1.8] text-primary-foreground border border-white/25 shadow-[0_10px_28px_rgba(16,185,129,0.4)] grid place-items-center active:scale-95 transition-transform"
           >
             <Plus className="size-7" strokeWidth={2.5} />
           </button>
