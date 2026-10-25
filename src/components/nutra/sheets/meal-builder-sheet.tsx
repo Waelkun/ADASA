@@ -19,6 +19,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NumInput } from "../num-input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -343,20 +344,22 @@ export function MealBuilderSheet() {
                           {nf(Math.round((it.f100 * (Number(it.grams) || 0)) / 10) / 10, 1)}
                         </span>
                       </span>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
+                      <NumInput
                         value={it.grams}
-                        aria-label={`${t("quantity")} ${it.name}`}
-                        onChange={(e) => {
-                          const n = Number(e.target.value);
-                          if (!Number.isFinite(n) || n < 0) return;
+                        onChange={(v) =>
                           setItems((prev) =>
-                            prev.map((p) => (p.key === it.key ? { ...p, grams: n } : p))
-                          );
-                        }}
-                        className="w-[76px] h-11 rounded-xl bg-secondary text-center text-base font-bold tabular focus:outline-none focus:ring-2 focus:ring-primary/40"
+                            prev.map((p) =>
+                              p.key === it.key
+                                ? { ...p, grams: typeof v === "number" ? v : 0 }
+                                : p
+                            )
+                          )
+                        }
+                        min={0}
+                        max={5000}
+                        decimals={1}
+                        ariaLabel={`${t("quantity")} ${it.name}`}
+                        className="w-[76px] h-11 bg-secondary text-center"
                       />
                       <span className="text-xs font-bold tabular text-muted-foreground w-11 text-end">
                         {nf(kcal)}

@@ -8,6 +8,7 @@ import { useAppStore } from "@/lib/store";
 import { MEAL_TYPES, type MealType, type PendingFood } from "@/lib/types";
 import { SheetShell } from "./sheet-shell";
 import { ProductThumb } from "../product-thumb";
+import { NumInput } from "../num-input";
 import { Segmented } from "../segmented";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -242,14 +243,16 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
                     <span className="text-[10px] font-semibold text-muted-foreground text-center">
                       {label}
                     </span>
-                    <input
+                    <NumInput
                       value={per100[key]}
-                      onChange={(e) => {
-                        const n = Number(e.target.value);
-                        setPer100((v) => ({ ...v, [key]: Number.isFinite(n) ? n : 0 }));
-                      }}
-                      inputMode="decimal"
-                      className="h-11 rounded-xl bg-secondary text-center text-base font-bold tabular focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      onChange={(v) =>
+                        setPer100((prev) => ({ ...prev, [key]: typeof v === "number" ? v : 0 }))
+                      }
+                      min={0}
+                      max={2000}
+                      decimals={1}
+                      ariaLabel={label}
+                      className="h-11 bg-secondary text-center"
                     />
                   </label>
                 ))}
@@ -303,17 +306,19 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
           </div>
 
           <div className="flex items-center gap-2">
-            <input
-              value={qtyMode === "grams" ? Math.round(grams) : servings}
-              onChange={(e) => {
-                const n = Number(e.target.value);
-                if (!Number.isFinite(n) || n < 0) return;
-                if (qtyMode === "grams") setGrams(n);
-                else setServings(n);
+            <NumInput
+              value={qtyMode === "grams" ? (grams === Math.round(grams) ? Math.round(grams) : grams) : servings}
+              onChange={(v) => {
+                if (typeof v !== "number" || v < 0) return;
+                if (qtyMode === "grams") setGrams(v);
+                else setServings(Math.round(v));
               }}
-              inputMode="decimal"
-              aria-label={t("quantity")}
-              className="flex-1 h-13 rounded-[18px] bg-secondary px-4 text-2xl font-bold tabular text-center focus:outline-none focus:ring-2 focus:ring-primary/40"
+              min={0}
+              max={5000}
+              decimals={qtyMode === "grams" ? 1 : 0}
+              inputMode={qtyMode === "grams" ? "decimal" : "numeric"}
+              ariaLabel={t("quantity")}
+              className="flex-1 h-13 bg-secondary px-4 text-2xl text-center"
             />
             <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
               {qtyMode === "grams" ? t("gramsFull") : t("serving")}

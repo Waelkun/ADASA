@@ -6,6 +6,7 @@ import { useUpdateFoodLog } from "@/lib/api";
 import type { FoodLog } from "@/lib/types";
 import { SheetShell } from "./sheet-shell";
 import { ProductThumb } from "../product-thumb";
+import { NumInput } from "../num-input";
 import { toast } from "sonner";
 
 /**
@@ -71,9 +72,10 @@ function EditGramsForm({ log, onClose }: { log: FoodLog; onClose: () => void }) 
   const updateLog = useUpdateFoodLog();
   const per100 = per100OfLog(log)!;
 
-  const [grams, setGrams] = useState(String(Math.round(log.grams)));
+  // free-typing grams (commit on blur/Enter) — live totals follow the commit
+  const [grams, setGrams] = useState<number | "">(Math.round(log.grams));
 
-  const g = Math.max(0, Number(grams) || 0);
+  const g = typeof grams === "number" ? Math.max(0, grams) : 0;
   const totals = useMemo(() => {
     const k = g / 100;
     return {
@@ -130,14 +132,14 @@ function EditGramsForm({ log, onClose }: { log: FoodLog; onClose: () => void }) 
       <div className="nutra-card p-5 flex flex-col items-center gap-1.5">
         <span className="text-xs font-medium text-muted-foreground">{t("quantity")}</span>
         <div className="flex items-baseline gap-2">
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
+          <NumInput
             value={grams}
-            aria-label={t("quantity")}
-            onChange={(e) => setGrams(e.target.value)}
-            className="w-36 text-center nutra-hero-num text-5xl tabular bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            onChange={setGrams}
+            min={1}
+            max={5000}
+            decimals={1}
+            ariaLabel={t("quantity")}
+            className="w-36 text-center nutra-hero-num text-5xl focus:ring-0"
           />
           <span className="text-sm font-bold text-muted-foreground">{t("gramsFull")}</span>
         </div>
@@ -146,7 +148,7 @@ function EditGramsForm({ log, onClose }: { log: FoodLog; onClose: () => void }) 
           {[50, 100, 200].map((v) => (
             <button
               key={v}
-              onClick={() => setGrams(String(v))}
+              onClick={() => setGrams(v)}
               className="nutra-chip h-11 px-4 text-[13px] bg-secondary text-secondary-foreground tabular active:scale-95 transition-transform"
             >
               {v}
