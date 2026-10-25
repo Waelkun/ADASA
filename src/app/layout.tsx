@@ -19,10 +19,10 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Nutra — تتبع السعرات والصحة",
+  title: "عدسة — تتبع السعرات والصحة",
   description:
     "تطبيق شخصي لتتبع السعرات والماكروز والوزن والماء والتمارين — امسح منتجاتك بالكاميرا وأضفها بثوانٍ. Personal nutrition & fitness tracker.",
-  applicationName: "Nutra",
+  applicationName: "عدسة",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -33,8 +33,8 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
-    title: "Nutra",
+    statusBarStyle: "black-translucent",
+    title: "عدسة",
   },
 };
 

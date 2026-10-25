@@ -26,8 +26,8 @@ export function LockScreen({ name = "" }: { name?: string }) {
         {/* logo + lock badge */}
         <div className="relative nutra-anim-in">
           <img
-            src="/logo.svg"
-            alt="Nutra"
+            src="/icons/icon-192.png"
+            alt="عدسة"
             className="size-24 rounded-[30px] shadow-xl shadow-primary/20"
           />
           <span className="absolute -bottom-1.5 -end-1.5 size-9 rounded-full bg-primary text-primary-foreground grid place-items-center border-4 border-background shadow-lg">

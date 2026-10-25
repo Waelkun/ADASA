@@ -61,7 +61,7 @@ export function OnboardingScreen() {
           {step === 0 && (
             <>
               <div className="flex flex-col items-center gap-3 text-center">
-                <img src="/logo.svg" alt="Nutra" className="size-20 rounded-[26px] shadow-lg shadow-primary/20" />
+                <img src="/icons/icon-192.png" alt="عدسة" className="size-20 rounded-[26px] shadow-lg shadow-primary/20" />
                 <h1 className="text-2xl font-extrabold leading-snug">{t("onb_title")}</h1>
                 <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">{t("onb_sub")}</p>
               </div>
@@ -118,7 +118,7 @@ export function OnboardingScreen() {
           {step === 2 && (
             <div className="flex flex-col items-center gap-4 text-center">
               <span className="size-24 rounded-full bg-primary/12 grid place-items-center">
-                <img src="/logo.svg" alt="Nutra" className="size-16 rounded-[22px]" />
+                <img src="/icons/icon-192.png" alt="عدسة" className="size-16 rounded-[22px]" />
               </span>
               <h1 className="text-2xl font-extrabold">{t("onb_ready")}</h1>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">{t("onb_ready_sub")}</p>

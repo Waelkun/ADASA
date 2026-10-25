@@ -80,9 +80,9 @@ export function Splash({ ready, onDone }: { ready: boolean; onDone: () => void }
             <span key={i} className="blade" style={{ "--i": i } as React.CSSProperties} />
           ))}
           <span className="nutra-flash" />
-          <img src="/logo.svg" alt="" className="nutra-splash-logo" />
+          <img src="/icons/icon-192.png" alt="" className="nutra-splash-logo" />
         </div>
-        <p className="nutra-splash-name">Nutra</p>
+        <p className="nutra-splash-name">عدسة</p>
       </div>
     </div>
   );

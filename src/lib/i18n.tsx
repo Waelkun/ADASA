@@ -293,7 +293,7 @@ const dict = {
   favorite_toast: { ar: "تم تحديث المفضلة", en: "Favorites updated" },
 
   // onboarding (welcome screen)
-  onb_title: { ar: "أهلاً بك في Nutra", en: "Welcome to Nutra" },
+  onb_title: { ar: "أهلاً بك في عدسة", en: "Welcome to Adasa" },
   onb_sub: {
     ar: "رفيقك اليومي للسعرات والماكروز والوزن والتمارين",
     en: "Your daily companion for calories, macros, weight and workouts",

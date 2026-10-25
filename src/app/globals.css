@@ -242,12 +242,9 @@ input[type="number"] {
   z-index: 100;
   display: grid;
   place-items: center;
-  /* matches manifest background_color */
-  background: #f4f6f8;
-  transition: opacity 180ms ease-out;
-}
-.dark .nutra-splash {
+  /* brand dark — always #0b1210 (matches the manifest background_color) */
   background: #0b1210;
+  transition: opacity 180ms ease-out;
 }
 .nutra-splash-stage {
   display: flex;
@@ -354,13 +351,11 @@ input[type="number"] {
   margin-top: 18px;
   font-weight: 800;
   font-size: 15px;
-  color: #101828;
+  /* brand dark splash → always light wordmark */
+  color: #eef4f1;
   letter-spacing: -0.01em;
   opacity: 0;
   transition: opacity 240ms ease-out 140ms;
-}
-.dark .nutra-splash-name {
-  color: #eef4f1;
 }
 .nutra-splash-stage[data-p="morph"] .nutra-splash-name,
 .nutra-splash-stage[data-p="hold"] .nutra-splash-name,
