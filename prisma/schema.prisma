@@ -105,3 +105,11 @@ model Workout {
 
   @@index([date])
 }
+
+// Saved meals ("وجباتي") — snapshot of a logged meal group, re-addable to any day
+model SavedMeal {
+  id        String   @id @default(cuid())
+  name      String
+  items     String   // JSON FoodLog-like array (name, grams, kcal, macros, per-100g, imageUrl…)
+  createdAt DateTime @default(now())
+}

@@ -83,6 +83,29 @@ export interface Workout {
   note: string | null;
 }
 
+/** one item of a saved meal (وجباتي) — a FoodLog snapshot */
+export interface SavedMealItem {
+  foodId: string | null;
+  name: string;
+  grams: number;
+  kcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  kcal100: number | null;
+  protein100: number | null;
+  carbs100: number | null;
+  fat100: number | null;
+  imageUrl: string | null;
+}
+
+export interface SavedMeal {
+  id: string;
+  name: string;
+  items: SavedMealItem[];
+  createdAt: string;
+}
+
 export type MuscleGroup =
   | "chest"
   | "back"

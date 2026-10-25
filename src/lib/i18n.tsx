@@ -179,6 +179,16 @@ const dict = {
   draft_restored: { ar: "رجّعنا لك مسودة وجبتك", en: "Your meal draft was restored" },
   meal_saved: { ar: "تم حفظ الوجبة", en: "Meal saved" },
 
+  // my meals (وجباتي)
+  my_meals: { ar: "وجباتي", en: "My meals" },
+  save_as_meal: { ar: "حفظ كوجبة", en: "Save as meal" },
+  meal_name_ph: { ar: "اسم الوجبة", en: "Meal name" },
+  meal_saved_toast: { ar: "انحفظت بوجباتي", en: "Saved to My meals" },
+  items_count: { ar: "عنصر", en: "items" },
+  add_meal_title: { ar: "إضافة وجبة", en: "Add meal" },
+  meal_added_toast: { ar: "تمت إضافة الوجبة", en: "Meal added" },
+  target_day: { ar: "اليوم المستهدف", en: "Target day" },
+
   // progress
   progress: { ar: "التقدم", en: "Progress" },
   latest: { ar: "الأحدث", en: "Latest" },

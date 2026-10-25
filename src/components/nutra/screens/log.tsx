@@ -8,6 +8,8 @@ import { useAppStore } from "@/lib/store";
 import type { Food, PendingFood } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProductThumb } from "../product-thumb";
+import { MyMealsBar, AddMealSheet } from "../sheets/my-meal-sheets";
+import type { SavedMeal } from "@/lib/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Segmented } from "../segmented";
@@ -19,6 +21,8 @@ export function LogScreen({ onPickFood }: { onPickFood: (f: PendingFood) => void
   const { data: foods, isLoading } = useFoods(q, filter === "fav");
   const toggleFav = useToggleFavorite();
   const openSheet = useAppStore((s) => s.openSheet);
+  /** saved meal picked from the وجباتي bar */
+  const [addingMeal, setAddingMeal] = useState<SavedMeal | null>(null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -45,6 +49,9 @@ export function LogScreen({ onPickFood }: { onPickFood: (f: PendingFood) => void
           <span className="text-[11px] text-muted-foreground leading-snug">{t("manual_hint")}</span>
         </button>
       </div>
+
+      {/* وجباتي bar — re-add a saved meal to any day & meal type */}
+      <MyMealsBar onPick={setAddingMeal} />
 
       {/* search */}
       <div className="relative">
@@ -116,6 +123,9 @@ export function LogScreen({ onPickFood }: { onPickFood: (f: PendingFood) => void
           ))}
         </ul>
       )}
+
+      {/* add saved meal to a day/meal type */}
+      <AddMealSheet meal={addingMeal} onClose={() => setAddingMeal(null)} />
     </div>
   );
 }

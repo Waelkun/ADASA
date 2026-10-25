@@ -6,6 +6,8 @@ import type {
   Food,
   FoodLog,
   Profile,
+  SavedMeal,
+  SavedMealItem,
   ScanResult,
   TodayPayload,
   WaterLog,
@@ -308,6 +310,32 @@ export function useProgress() {
   return useQuery<ProgressPayload>({
     queryKey: ["progress"],
     queryFn: () => jget<ProgressPayload>("/api/progress"),
+  });
+}
+
+/* ---------- saved meals (وجباتي) ---------- */
+
+export function useMeals() {
+  return useQuery<SavedMeal[]>({
+    queryKey: ["meals"],
+    queryFn: () => jget<SavedMeal[]>("/api/meals"),
+  });
+}
+
+export function useCreateMeal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; items: SavedMealItem[] }) =>
+      jsend<SavedMeal>("/api/meals", "POST", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["meals"] }),
+  });
+}
+
+export function useDeleteMeal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => jsend<{ ok: boolean }>(`/api/meals/${id}`, "DELETE"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["meals"] }),
   });
 }
 

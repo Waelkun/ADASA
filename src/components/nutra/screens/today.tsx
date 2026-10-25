@@ -13,7 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { EditGramsSheet, per100OfLog } from "../sheets/edit-grams-sheet";
-import { Pencil } from "lucide-react";
+import { SaveMealSheet } from "../sheets/my-meal-sheets";
+import { Pencil, BookmarkPlus } from "lucide-react";
 
 const MEAL_ICON: Record<MealType, string> = {
   breakfast: "🌅",
@@ -41,6 +42,8 @@ export function TodayScreen() {
   const addWater = useAddWater();
   const undoWater = useUndoWater();
   const [editingLog, setEditingLog] = useState<FoodLog | null>(null);
+  /** meal group being saved as وجباتي */
+  const [savingGroup, setSavingGroup] = useState<{ meal: MealType; items: FoodLog[] } | null>(null);
 
   const todayStr = localDayStr();
   const viewDay = selectedDay ?? todayStr;
@@ -282,6 +285,13 @@ export function TodayScreen() {
                       {nf(g.kcal)} {t("kcal")}
                     </span>
                     <button
+                      aria-label={`${t("save_as_meal")} — ${t(g.meal as "breakfast")}`}
+                      onClick={() => setSavingGroup({ meal: g.meal, items: g.items })}
+                      className="size-9 grid place-items-center rounded-full text-primary hover:bg-accent transition-colors active:scale-95"
+                    >
+                      <BookmarkPlus className="size-4" />
+                    </button>
+                    <button
                       aria-label={`${t("add_food")} — ${t(g.meal as "breakfast")}`}
                       onClick={() => openSheet("meal-builder", { mealType: g.meal })}
                       className="size-9 grid place-items-center rounded-full text-primary hover:bg-accent transition-colors active:scale-95"
@@ -373,6 +383,15 @@ export function TodayScreen() {
 
       {/* edit-grams sheet */}
       <EditGramsSheet log={editingLog} onClose={() => setEditingLog(null)} />
+
+      {/* save-meal sheet (وجباتي) — remounts per group so the name resets */}
+      <SaveMealSheet
+        key={savingGroup?.meal ?? "none"}
+        open={savingGroup != null}
+        defaultName={savingGroup ? `${t(savingGroup.meal as "breakfast")} · ${nf(savingGroup.items.length)} ${t("items_count")}` : ""}
+        items={savingGroup?.items ?? []}
+        onClose={() => setSavingGroup(null)}
+      />
     </div>
   );
 }
