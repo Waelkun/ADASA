@@ -34,11 +34,12 @@ export async function PUT(req: NextRequest) {
         goalType: ["lose", "maintain", "gain"].includes(body.goalType)
           ? body.goalType
           : undefined,
-        kcalGoal: num(body.kcalGoal, 800, 6000, 2100),
-        proteinG: num(body.proteinG, 10, 500, 160),
-        carbsG: num(body.carbsG, 0, 800, 190),
-        fatG: num(body.fatG, 10, 300, 70),
-        waterGoalMl: num(body.waterGoalMl, 500, 8000, 2800),
+        // partial updates: undefined = not provided → leave as-is (never reset)
+        kcalGoal: body.kcalGoal != null ? num(body.kcalGoal, 800, 6000, 2100) : undefined,
+        proteinG: body.proteinG != null ? num(body.proteinG, 10, 500, 160) : undefined,
+        carbsG: body.carbsG != null ? num(body.carbsG, 0, 800, 190) : undefined,
+        fatG: body.fatG != null ? num(body.fatG, 10, 300, 70) : undefined,
+        waterGoalMl: body.waterGoalMl != null ? num(body.waterGoalMl, 500, 8000, 2800) : undefined,
         // undefined = not provided (leave as-is); null/"" = explicit clear
         goalWeightKg:
           body.goalWeightKg === undefined
@@ -46,8 +47,13 @@ export async function PUT(req: NextRequest) {
             : body.goalWeightKg == null || body.goalWeightKg === ""
               ? null
               : num(body.goalWeightKg, 30, 300, 78),
-        workoutsPerWeek: num(body.workoutsPerWeek, 1, 7, 4),
-        units: body.units === "imperial" ? "imperial" : "metric",
+        workoutsPerWeek: body.workoutsPerWeek != null ? num(body.workoutsPerWeek, 1, 7, 4) : undefined,
+        units:
+          body.units === "imperial"
+            ? "imperial"
+            : body.units === "metric"
+              ? "metric"
+              : undefined,
         // welcome screen completion (only ever set to true here)
         onboardingCompleted: body.onboardingCompleted === true ? true : undefined,
       },

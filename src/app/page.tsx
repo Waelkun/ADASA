@@ -158,7 +158,7 @@ function AppShell() {
     return (
       <>
         {splash}
-        <OnboardingScreen />
+        <OnboardingScreen profile={today.profile} />
       </>
     );
   }
