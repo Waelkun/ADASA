@@ -223,7 +223,7 @@ function SettingsForm({ profile }: { profile: Profile }) {
                 </span>
               </p>
               <p className="text-xs text-muted-foreground">
-                {t("macro_split_auto")}: P {nf(sMacros.protein)} · C {nf(sMacros.carbs)} · F{" "}
+                {t("macro_split_auto")}: {t("protein")} {nf(sMacros.protein)} · {t("carbs")} {nf(sMacros.carbs)} · {t("fat")}{" "}
                 {nf(sMacros.fat)} {t("grams")}
               </p>
               <button

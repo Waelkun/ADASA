@@ -132,10 +132,10 @@ export function TodayScreen() {
         )}
         <div className="mt-5 w-full">
           <MacroBar protein={totals.protein} carbs={totals.carbs} fat={totals.fat} />
-          <div className="mt-2 flex justify-between text-xs font-medium text-muted-foreground">
-            <span>P {nf(totals.protein, 1)}{t("grams")}</span>
-            <span>C {nf(totals.carbs, 1)}{t("grams")}</span>
-            <span>F {nf(totals.fat, 1)}{t("grams")}</span>
+          <div className="mt-2 grid grid-cols-3 text-center text-[11px] font-medium text-muted-foreground">
+            <span>{t("protein")} {nf(totals.protein, 1)}{t("grams")}</span>
+            <span>{t("carbs")} {nf(totals.carbs, 1)}{t("grams")}</span>
+            <span>{t("fat")} {nf(totals.fat, 1)}{t("grams")}</span>
           </div>
         </div>
       </section>
@@ -303,8 +303,7 @@ export function TodayScreen() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold truncate">{l.name}</p>
                         <p className="text-xs text-muted-foreground tabular">
-                          {nf(l.grams, l.grams % 1 ? 1 : 0)}{t("grams")} · P{nf(l.proteinG, 1)} C
-                          {nf(l.carbsG, 1)} F{nf(l.fatG, 1)}
+                          {nf(l.grams, l.grams % 1 ? 1 : 0)}{t("grams")} · {t("protein")} {nf(l.proteinG, 1)} · {t("carbs")} {nf(l.carbsG, 1)} · {t("fat")} {nf(l.fatG, 1)}
                           {l.source === "scan" && (
                             <span className="ms-1.5 inline-flex items-center gap-0.5 text-primary">
                               <Sparkles className="size-3" />

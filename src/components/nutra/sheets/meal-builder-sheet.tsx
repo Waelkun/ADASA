@@ -339,9 +339,7 @@ export function MealBuilderSheet() {
                       <span className="flex-1 min-w-0">
                         <span className="block text-[13px] font-semibold truncate">{it.name}</span>
                         <span className="block text-[10px] text-muted-foreground tabular">
-                          P{nf(Math.round((it.p100 * (Number(it.grams) || 0)) / 10) / 10, 1)} C
-                          {nf(Math.round((it.c100 * (Number(it.grams) || 0)) / 10) / 10, 1)} F
-                          {nf(Math.round((it.f100 * (Number(it.grams) || 0)) / 10) / 10, 1)}
+                          {t("protein")} {nf(Math.round((it.p100 * (Number(it.grams) || 0)) / 10) / 10, 1)} · {t("carbs")} {nf(Math.round((it.c100 * (Number(it.grams) || 0)) / 10) / 10, 1)} · {t("fat")} {nf(Math.round((it.f100 * (Number(it.grams) || 0)) / 10) / 10, 1)}
                         </span>
                       </span>
                       <NumInput
@@ -378,10 +376,10 @@ export function MealBuilderSheet() {
                 })}
               </div>
               {/* macros summary */}
-              <div className="flex justify-between px-1 pt-1 text-[11px] font-semibold text-muted-foreground tabular">
-                <span>P {nf(totals.p, 1)}{t("grams")}</span>
-                <span>C {nf(totals.c, 1)}{t("grams")}</span>
-                <span>F {nf(totals.f, 1)}{t("grams")}</span>
+              <div className="grid grid-cols-3 text-center px-1 pt-1 text-[10px] font-semibold text-muted-foreground tabular">
+                <span>{t("protein")} {nf(totals.p, 1)}{t("grams")}</span>
+                <span>{t("carbs")} {nf(totals.c, 1)}{t("grams")}</span>
+                <span>{t("fat")} {nf(totals.f, 1)}{t("grams")}</span>
               </div>
             </div>
           )}
