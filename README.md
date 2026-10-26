@@ -38,7 +38,7 @@
 
 <p align="center">
   <img src="docs/screenshots/adasa-today-desktop.png" alt="Adasa Today Dashboard" width="49%" />
-  <img src="docs/screenshots/adasa-goals-cycling.png" alt="Adasa Caloric Cycling Goals" width="49%" />
+  <img src="docs/screenshots/adasa-goals-desktop.png" alt="Adasa Caloric Cycling Goals" width="49%" />
 </p>
 
 ### 2. Workouts & Vision AI Scanner
