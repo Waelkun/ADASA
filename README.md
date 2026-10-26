@@ -1,126 +1,167 @@
-# عدسة (Adasa) — تطبيق تتبع السعرات والتغذية الذكي
+# Adasa (عدسة) — Vision AI Nutrition & Calorie Tracking Platform
 
-«عدسة» هو تطبيق ويب متطور وشامل لتتبع السعرات الحرارية، الماكروز، استهلاك الماء، والتمارين الرياضية، مع ميزة التحليل الذكي للوجبات والملصقات الغذائية عبر الرؤية الحاسوبية ونماذج الذكاء الاصطناعي (NVIDIA Vision AI).
+<p align="center">
+  <img src="docs/screenshots/adasa-app-icon.png" alt="Adasa Logo" width="110" style="border-radius: 26px;" />
+</p>
 
-تمت إعادة بناء التطبيق بالكامل وفق أحدث معايير الأمان وقواعد البيانات السحابية (Supabase Postgres + Row Level Security + Supabase Auth) ليعمل كمنصة سحابية متكاملة متعددة المستخدمين وجاهزة للنشر المباشر على **Vercel** و **GitHub**.
+<p align="center">
+  <a href="https://adasa-qomra.vercel.app/" target="_blank">
+    <img src="https://img.shields.io/badge/Live%20Demo-Vercel-black?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" />
+  </a>
+  <img src="https://img.shields.io/badge/Next.js-15%20App%20Router-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Tailwind-CSS%20v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Supabase-Database%20%26%20Auth-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/Vision%20AI-Multimodal%20Scanner-76B900?style=for-the-badge" alt="Vision AI" />
+</p>
+
+<p align="center">
+  An intelligent, Arabic-first nutrition and fitness tracking web platform. Unlike generic Western calorie counters, Adasa is purpose-built with native Arabic typography, cultural dish context, and true RTL ergonomics, combined with multimodal Vision AI for automatic barcode, nutrition label, and food plate recognition.
+</p>
 
 ---
 
-## 🛠 التقنيات المستخدمة (Tech Stack)
+## 🌐 Live Application
 
-- **إطار العمل (Framework):** Next.js 16 (App Router) مع React 19 و TypeScript 5.
-- **التصميم والواجهة:** Tailwind CSS v4، أيقونات Lucide React، ونظام تصميم iOS متوافق تماماً مع اللغة العربية (RTL) والوضع الليلي/النهاري (Dark/Light Mode).
-- **إدارة الحالة:** Zustand للواجهات المحلية + TanStack React Query v5 للمزامنة اللحظية والبيانات السحابية.
-- **قاعدة البيانات والمصادقة:** Supabase (PostgreSQL 15+ مع تفعيل أمان مستوى الصف RLS وسياسات العزل الكاملة لكل مستخدم).
-- **المصادقة (Auth):** Supabase Auth عبر البريد الإلكتروني وكلمة المرور + تسجيل الدخول السريع بحساب Google (OAuth PKCE).
-- **الذكاء الاصطناعي (Vision AI):** NVIDIA Vision API (OpenAI-Compatible Endpoint) عبر السيرفر حصراً (`/api/scan`)، مدعوماً بحد استخدام يومي ومكافحة استهلاك الموارد.
-- **الاستضافة والنشر:** مهيأ بالكامل للنشر بنقرة واحدة على **Vercel**.
+- **Production URL:** [https://adasa-qomra.vercel.app/](https://adasa-qomra.vercel.app/)
+- **Deployment Platform:** Vercel
+- **Cloud Infrastructure:** Supabase (PostgreSQL 15+, Row Level Security, Supabase Auth)
+- **AI Processing:** Multimodal Vision AI Model Endpoint
 
 ---
 
-## 📋 متطلبات التشغيل ومتغيرات البيئة (Environment Variables)
+## 📸 Product Showcase & Screenshots
 
-للتشغيل محلياً أو على Vercel، يتطلب المشروع ضبط المتغيرات التالية داخل ملف `.env.local`:
+### 1. Daily Nutrition Dashboard & Mobile Experience
+*Interactive calorie rings, macronutrient breakdown (protein, carbs, fats), meal categorization, and one-tap hydration:*
 
+<p align="center">
+  <img src="docs/screenshots/adasa-today-dashboard.png" alt="Adasa Today Dashboard (Desktop)" width="58%" />
+  <img src="docs/screenshots/adasa-mobile-view.png" alt="Adasa Today Dashboard (Mobile View)" width="38%" />
+</p>
+
+### 2. Intelligent Caloric Cycling & Vision AI Scanning
+*Metabolic Zigzag calorie planning and camera-assisted nutrition label recognition:*
+
+<p align="center">
+  <img src="docs/screenshots/adasa-goals-cycling.png" alt="Adasa Zigzag Caloric Cycling Goals" width="48%" />
+  <img src="docs/screenshots/adasa-vision-ai-scan.png" alt="Adasa Multimodal Vision AI Scanner" width="48%" />
+</p>
+
+### 3. Strength Workouts & Cloud Portal
+*Dedicated muscle group volume tracking alongside zero-friction Google OAuth sign-in:*
+
+<p align="center">
+  <img src="docs/screenshots/adasa-workouts.png" alt="Adasa Workout Tracker" width="48%" />
+  <img src="docs/screenshots/adasa-login-en.png" alt="Adasa Cloud Portal" width="48%" />
+</p>
+
+---
+
+## ✨ Key Features
+
+- **📸 Multimodal Vision AI Scanner:** Snap a picture of any food plate or nutrition label. The vision model analyzes ingredients, serving size, and extracts accurate calorie, protein, carbohydrate, and fat counts directly into your diary.
+- **⚡ Zigzag Caloric Cycling Plan:** Supports flexible metabolic cycling (alternating higher and lower caloric intake days throughout the week) to prevent metabolic slowdown during fat loss or muscle building phases.
+- **🎯 Dynamic Macro Targets & Science-Backed Formulas:** Built-in Mifflin-St Jeor and Harris-Benedict algorithms calculate precise Basal Metabolic Rate (BMR) and Total Daily Energy Expenditure (TDEE) with custom percentage/gram splits.
+- **🥗 Categorized Daily Diary:** Log breakfast, lunch, dinner, and snacks with a custom meal builder, quick-add macros, and a favorite foods catalog.
+- **💧 One-Tap Hydration Tracker:** Log water intake with rapid increments (250ml, 500ml, custom) alongside an active daily progress ring.
+- **⚖️ Weight Trend Analysis:** Track scale weights with moving-average trendlines (kg or lb) to filter out daily water weight fluctuations.
+- **🏋️ Strength Workout Logger:** Track training frequency, duration, and muscle groups targeted per session.
+- **🔒 Enterprise-Grade Security & Isolation:** All health records, custom meals, and weight data are strictly protected by PostgreSQL **Row Level Security (RLS)** in Supabase.
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+flowchart TD
+    UserClient([Client Browser: Desktop & Mobile PWA]) -->|HTTPS / Next.js 15 App Router| Vercel[Vercel Serverless Platform]
+    Vercel -->|Auth & Data Queries| SupabaseClient[Supabase Client SDK]
+    SupabaseClient -->|PostgreSQL + Row Level Security| SupabaseDB[(Supabase PostgreSQL)]
+    UserClient -->|Camera Capture / Label Photo| ApiScan[Next.js API Route: /api/scan]
+    ApiScan -->|Preprocess & Validate| Sharp[Sharp Optimization Engine]
+    Sharp -->|Multimodal Image Prompting| VisionAI[Multimodal Vision AI Model]
+    VisionAI -->|Normalized Nutrition JSON| ApiScan
+    ApiScan -->|Verified Food Record| UserClient
+```
+
+---
+
+## 🛠️ Tech Stack Breakdown
+
+| Layer | Technologies |
+|---|---|
+| **Framework & Engine** | Next.js 15 (App Router), React 19, TypeScript 5 |
+| **Styling & Design System** | Tailwind CSS v4, Lucide React, Shadcn UI primitives |
+| **Motion & Physics** | GSAP (`@gsap/react`), Framer Motion |
+| **State & Data Fetching** | Zustand (local UI state), TanStack React Query v5 (server sync) |
+| **Backend & Cloud Database** | Supabase (PostgreSQL 15+, Row Level Security policies) |
+| **Authentication** | Supabase Auth (PKCE flow, Google OAuth, Magic Link & Email) |
+| **Vision & Machine Learning** | Multimodal Vision API endpoint with rate limiting & token pooling |
+| **Deployment & Edge CDN** | Vercel |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (v18 or higher)
+- npm or pnpm
+- Supabase Project URL & Anon Key
+- Multimodal Vision API Key
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/Waelkun/ADASA.git
+cd ADASA
+```
+
+### 2. Install dependencies
+```bash
+npm install
+```
+
+### 3. Configure environment variables
+Create a `.env.local` file in the root directory:
+```bash
+cp .env.example .env.local
+```
+
+Fill in your project credentials:
 ```env
-# إعدادات Supabase (قاعدة البيانات والمصادقة)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 
-# مفتاح ونموذج الذكاء الاصطناعي من NVIDIA (استدعاء من السيرفر فقط)
-NVIDIA_API_KEY=your-nvidia-api-key
+# Multimodal Vision AI Model Credentials
+NVIDIA_API_KEY=your-vision-api-key
 NVIDIA_MODEL=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
 
-# الحد الأقصى اليومي للمسح الذكي لكل مستخدم (افتراضياً 30)
+# Daily Scan Rate Limit per User
 SCAN_DAILY_LIMIT=30
 ```
 
-> **ملاحظة أمنية:** لا تقم أبداً بوضع المفتاح السري `SUPABASE_SERVICE_ROLE_KEY` أو كلمة مرور قاعدة البيانات في أي مكان داخل التطبيق. التطبيق مصمم بالكامل ليعمل بأمان تام عبر مفتاح الـ `anon` وسياسات الأمان RLS المدمجة في Postgres.
-
----
-
-## 🗄️ مخطط قاعدة البيانات (Supabase Schema)
-
-تم إنشاء وتأمين جداول المشروع بالكامل داخل Supabase في ملف SQL مستقل:
-[`supabase/schema.sql`](supabase/schema.sql)
-
-### الجداول الأساسية:
-1. `profiles`: الملفات الشخصية للمستخدمين، أهداف السعرات، نسب الماكروز، هدف شرب الماء، والوحدات.
-2. `foods`: قاعدة بيانات الأطعمة المخصصة للمستخدم مع إمكانية التفضيل (Favorites).
-3. `food_logs`: السجل اليومي للوجبات مع السعرات والماكروز والصور المصغرة للوجبة (Thumbnail).
-4. `weight_logs`: سجل قياسات الوزن مع التحويل التلقائي الدقيق بين الكيلوجرام والباوند.
-5. `water_logs`: سجل شرب الماء اليومي بالمليلتر.
-6. `workouts`: سجل التمارين ومجموعات العضلات والمدة المستغرقة.
-7. `saved_meals`: الوجبات المجمعة المحفوظة مسبقاً لإعادة إضافتها بنقرة واحدة.
-8. `scan_usage`: جدول تتبع استخدام المسح الذكي لضبط حدود الاستخدام اليومية لكل مستخدم ومنع استنزاف الموارد.
-
----
-
-## 🚀 التشغيل المحلي (Local Development)
-
-1. **تثبيت الحزم:**
-   ```bash
-   npm install
-   ```
-
-2. **تهيئة ملف البيئة:**
-   انسخ ملف `.env.example` إلى `.env.local` وضع فيه مفاتيح Supabase و NVIDIA الخاصة بك:
-   ```bash
-   cp .env.example .env.local
-   ```
-
-3. **تشغيل سيرفر التطوير:**
-   ```bash
-   npm run dev
-   ```
-   افتح المتصفح على: `http://localhost:3000`
-
-4. **التحقق من سلامة البناء:**
-   ```bash
-   npx tsc --noEmit
-   npm run build
-   ```
-
----
-
-## 🌐 خطوات النشر على GitHub و Vercel
-
-### الخطوة 1: الرفع إلى مستودع GitHub
+### 4. Run the development server
 ```bash
-git add .
-git commit -m "feat: complete supabase & nvidia vision integration"
-git branch -M main
-git remote add origin https://github.com/USERNAME/REPO_NAME.git
-git push -u origin main
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) to view the application.
+
+### 5. Build for production
+```bash
+npm run build
+npm run start
 ```
 
-### الخطوة 2: النشر على منصة Vercel
-1. سجّل الدخول إلى [Vercel](https://vercel.com) واضغط **"Add New Project"**.
-2. اختر مستودع المشروع من حسابك على GitHub.
-3. الإعدادات الافتراضية لـ Next.js معتمدة تلقائياً (`Framework Preset: Next.js`).
-4. في قسم **Environment Variables**، أضف المتغيرات الخمسة الموضحة أعلاه:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `NVIDIA_API_KEY`
-   - `NVIDIA_MODEL`
-   - `SCAN_DAILY_LIMIT`
-5. اضغط **Deploy**.
+---
 
-### الخطوة 3: تفعيل نطاق Vercel في Supabase Auth
-بعد إتمام النشر على Vercel وحصولك على الرابط (مثلاً: `https://my-adasa.vercel.app`):
-1. افتح لوحة تحكم [Supabase Dashboard](https://supabase.com/dashboard).
-2. توجّه إلى **Authentication** -> **URL Configuration**.
-3. في حقل **Site URL**، ضع رابط تطبيقك على Vercel.
-4. في قسم **Redirect URLs**، أضف:
-   - `https://my-adasa.vercel.app/**`
-   - `https://my-adasa.vercel.app/auth/callback`
-   - `http://localhost:3000/**` (للتطوير المحلي)
-5. اضغط **Save**.
+## 🔒 Security & Privacy
+
+- All user metrics, dietary logs, and weight records are sandboxed per-user via Supabase **Row Level Security (RLS)**.
+- Sensitive vision API keys are executed server-side via Next.js serverless route handlers (`/api/scan`) and never exposed to the client bundle.
 
 ---
 
-## ✨ المميزات الرئيسية للمشروع
+## 📄 License
 
-- **دقة الحسابات الغذائية:** معادلات Mifflin-St Jeor، خطة السعرات المتعرجة (Zigzag Diet)، ومزامنة حقيقية بين غرامات الماكروز والسعرات الناتجة.
-- **دعم وحدات القياس العالمية:** تحويل دقيق ومرن بين النظام المتري (kg) والنظام الإمبراطوري (lb) دون أي تكرار أو أخطاء حسابية.
-- **واجهة مستخدم غنية وسريعة:** تصميم مستوحى من تطبيقات Apple الصحية مع دعم السحب والتنقل السلس عبر الأيام السابقة ومتابعة مؤشرات التقدم الأسبوعية والشهرية.
+Maintained by [Waelkun](https://github.com/Waelkun). All rights reserved.
