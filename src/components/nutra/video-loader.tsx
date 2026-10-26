@@ -29,10 +29,10 @@ export function VideoLoader({
         />
       </div>
       <div className="flex flex-col items-center gap-2 mt-1">
-        <span className="text-sm font-bold text-foreground/90 tracking-wide">
+        <span className="text-sm font-bold text-[#eef4f1] tracking-wide">
           {message}
         </span>
-        <span className="h-1 w-12 rounded-full bg-primary/40 animate-pulse" />
+        <span className="h-1 w-12 rounded-full bg-emerald-500/50 animate-pulse" />
       </div>
     </div>
   );
@@ -42,6 +42,7 @@ export function VideoLoader({
       <div
         role="status"
         aria-live="polite"
+        suppressHydrationWarning
         className={cn("flex items-center justify-center p-6", className)}
       >
         {content}
@@ -53,6 +54,7 @@ export function VideoLoader({
     <div
       role="status"
       aria-live="polite"
+      suppressHydrationWarning
       className={cn(
         "fixed inset-0 z-50 bg-[#0a110e] flex items-center justify-center p-6 nutra-anim-in",
         className

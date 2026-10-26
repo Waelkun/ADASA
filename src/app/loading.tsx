@@ -5,6 +5,7 @@ export default function RootLoading() {
     <div
       role="status"
       aria-live="polite"
+      suppressHydrationWarning
       className="fixed inset-0 z-50 bg-[#0a110e] flex items-center justify-center p-6"
     >
       <div className="flex flex-col items-center justify-center gap-4 text-center select-none">
