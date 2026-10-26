@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
+import fs from "node:fs";
+import path from "node:path";
 import { createClient } from "@/lib/supabase/server";
 import { kcalSanityOk } from "@/lib/nutrition";
 
@@ -150,6 +152,31 @@ CRITICAL: Return ONLY a raw JSON object (all numbers must be pure numeric floats
 
 /* ---------- Gemini Vision Provider (Primary) ---------- */
 
+/**
+ * Resolve the Gemini API key:
+ * Prioritizes GOOGLE_GEMINI_API_KEY, then reads .env.local directly to bypass
+ * any conflicting Windows system/user environment variables named GEMINI_API_KEY.
+ */
+function getGeminiApiKey(): string | null {
+  const googleKey = process.env.GOOGLE_GEMINI_API_KEY?.trim();
+  if (googleKey) return googleKey;
+
+  try {
+    const envPath = path.join(process.cwd(), ".env.local");
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, "utf8");
+      const match = content.match(/^(?:GOOGLE_GEMINI_API_KEY|GEMINI_API_KEY)\s*=\s*["']?([^"'\r\n]+)["']?/m);
+      if (match && match[1]?.trim()) {
+        return match[1].trim();
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return process.env.GEMINI_API_KEY?.trim() || null;
+}
+
 async function callGeminiVision(
   labelImage: string,
   frontImage: string | null,
@@ -189,14 +216,17 @@ async function callGeminiVision(
     }
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
 
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
       body: JSON.stringify({
         contents: [{ parts }],
         generationConfig: {
@@ -412,7 +442,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Execute Vision AI: Try Gemini first, fallback to NVIDIA
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const geminiKey = getGeminiApiKey();
     const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
     const nvidiaKey = process.env.NVIDIA_API_KEY;
 
