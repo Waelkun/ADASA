@@ -374,6 +374,82 @@ input[type="number"] {
   opacity: 1;
 }
 
+
+/* ---------- transitions.dev & motion tokens ---------- */
+:root {
+  --check-dur: 280ms;
+  --check-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --shake-distance: 5px;
+  --shake-dur: 60ms;
+  --shake-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --digit-dur: 240ms;
+  --digit-distance: 6px;
+  --digit-stagger: 35ms;
+  --digit-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes t-digit-pop-in {
+  0% {
+    transform: translateY(var(--digit-distance));
+    opacity: 0;
+    filter: blur(2px);
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+.t-digit-group {
+  display: inline-flex;
+  align-items: baseline;
+}
+.t-digit {
+  display: inline-block;
+  will-change: transform, opacity, filter;
+}
+.t-digit-group.is-animating .t-digit {
+  animation: t-digit-pop-in var(--digit-dur) var(--digit-ease) both;
+}
+.t-digit-group.is-animating .t-digit[data-stagger="1"] {
+  animation-delay: var(--digit-stagger);
+}
+.t-digit-group.is-animating .t-digit[data-stagger="2"] {
+  animation-delay: calc(var(--digit-stagger) * 2);
+}
+
+@keyframes t-error-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(calc(-1 * var(--shake-distance))); }
+  40%, 80% { transform: translateX(var(--shake-distance)); }
+}
+.t-input.is-error {
+  animation: t-error-shake 320ms var(--shake-ease);
+  border-color: var(--destructive) !important;
+}
+
+@keyframes t-check-pop {
+  0% {
+    transform: scale(0.7) rotate(-15deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+.t-success-check[data-state="in"] {
+  animation: t-check-pop var(--check-dur) var(--check-ease) forwards;
+}
+
+@keyframes nutra-shine-sweep {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+.nutra-shine {
+  animation: nutra-shine-sweep 4s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

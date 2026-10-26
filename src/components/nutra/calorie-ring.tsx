@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import { CountUp } from "@/components/react-bits/count-up";
 
 interface CalorieRingProps {
   eaten: number;
@@ -67,8 +68,8 @@ export function CalorieRing({ eaten, goal, size = 220 }: CalorieRingProps) {
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         {over ? (
           <>
-            <span className="nutra-hero-num text-4xl text-negative tabular">
-              +{nf(eaten - goal)}
+            <span className="nutra-hero-num text-4xl text-negative tabular inline-flex items-baseline">
+              +<CountUp to={eaten - goal} />
             </span>
             <span className="text-xs font-medium text-muted-foreground mt-1">
               {t("over_by")}
@@ -76,9 +77,7 @@ export function CalorieRing({ eaten, goal, size = 220 }: CalorieRingProps) {
           </>
         ) : (
           <>
-            <span className="nutra-hero-num text-[44px] leading-none tabular">
-              {nf(remaining)}
-            </span>
+            <CountUp to={remaining} className="nutra-hero-num text-[44px] leading-none tabular" />
             <span className="text-xs font-medium text-muted-foreground mt-1.5">
               {t("calories_left")}
             </span>

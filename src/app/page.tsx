@@ -23,6 +23,7 @@ import { FoodConfirmSheet } from "@/components/nutra/sheets/food-confirm-sheet";
 import { MealBuilderSheet } from "@/components/nutra/sheets/meal-builder-sheet";
 import { OnboardingScreen } from "@/components/nutra/onboarding";
 import { LockScreen } from "@/components/nutra/lock-screen";
+import { GsapEntrance } from "@/components/nutra/gsap-entrance";
 import { Splash, useColdStart } from "@/components/nutra/splash";
 import { kcalSanityOk } from "@/lib/nutrition";
 
@@ -307,7 +308,7 @@ function AppShell() {
 
       {/* screens */}
       <main className="flex-1 mx-auto w-full max-w-md md:max-w-3xl lg:max-w-4xl px-4 md:px-6 pb-[var(--dock-clearance)]">
-        <div key={tab} className="nutra-anim-in">
+        <GsapEntrance tabKey={tab}>
           {tab === "today" && <TodayScreen />}
           {tab === "log" && (
             <LogScreen
@@ -320,7 +321,7 @@ function AppShell() {
           {tab === "goals" && <GoalsScreen />}
           {tab === "workouts" && <WorkoutsScreen />}
           {tab === "settings" && <SettingsScreen />}
-        </div>
+        </GsapEntrance>
       </main>
 
       <BottomNav />

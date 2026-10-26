@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { EditGramsSheet, per100OfLog } from "../sheets/edit-grams-sheet";
 import { SaveMealSheet } from "../sheets/my-meal-sheets";
 import { Pencil, BookmarkPlus } from "lucide-react";
+import { ShinyText } from "@/components/react-bits/shiny-text";
 
 const MEAL_ICON: Record<MealType, string> = {
   breakfast: "🌅",
@@ -121,7 +122,7 @@ export function TodayScreen() {
         {today && today.streak > 0 && (
           <span className="nutra-chip bg-positive/12 text-positive gap-1">
             <Flame className="size-3.5" />
-            {nf(today.streak)} {t("streak_days")}
+            <ShinyText text={`${nf(today.streak)} ${t("streak_days")}`} speed={3.5} />
           </span>
         )}
       </div>
