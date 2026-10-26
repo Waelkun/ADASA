@@ -33,18 +33,23 @@ const scanSchema = z.object({
 
 /* ---------- limits & helpers ---------- */
 
-// NVIDIA inline base64 images are capped (~180,000 characters / ~130 KB)
-const MAX_IMAGE_CHARS = 180_000;
+const MAX_IMAGE_CHARS = 500_000;
 const DATA_URL_RE = /^data:image\/(jpe?g|png|webp|heic);base64,/i;
 
 function isValidImageDataUrl(v: unknown): v is string {
   return typeof v === "string" && DATA_URL_RE.test(v);
 }
 
+function parseDataUrl(dataUrl: string): { mimeType: string; data: string } | null {
+  const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
+  if (!match) return null;
+  return { mimeType: match[1], data: match[2] };
+}
+
 /** strip markdown code fences and extract outermost JSON object with robust sanitization */
 function extractJson(text: string): string | null {
   let t = text.trim();
-  // Strip reasoning/think tags if present (common in reasoning models)
+  // Strip reasoning/think tags if present
   t = t.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fence) t = fence[1].trim();
@@ -64,18 +69,51 @@ function extractJson(text: string): string | null {
   return jsonStr;
 }
 
+/** Fix common kcal issues (e.g. model returned kJ instead of kcal, or kcal missing) */
+function fixNutrientsKcal(nutrients: {
+  kcal: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  [key: string]: any;
+} | null | undefined) {
+  if (!nutrients) return;
+  const p = nutrients.protein_g ?? 0;
+  const c = nutrients.carbs_g ?? 0;
+  const f = nutrients.fat_g ?? 0;
+  const derived = 4 * p + 4 * c + 9 * f;
+
+  if (nutrients.kcal != null && derived > 15) {
+    // If kcal is approximately derived * 4.184 (meaning the model read kJ instead of kcal)
+    const ratio = nutrients.kcal / derived;
+    if (ratio >= 3.2 && ratio <= 5.2) {
+      console.log(`[Nutrition Auto-Correction] Detected kJ (${nutrients.kcal} kJ) instead of kcal. Converting to ${Math.round(nutrients.kcal / 4.184)} kcal.`);
+      nutrients.kcal = Math.round(nutrients.kcal / 4.184);
+    }
+  } else if ((nutrients.kcal == null || nutrients.kcal === 0) && derived > 15) {
+    // If kcal is missing or zero but macros are present, derive it
+    console.log(`[Nutrition Auto-Correction] Deriving missing kcal from macros: ${Math.round(derived)} kcal.`);
+    nutrients.kcal = Math.round(derived);
+  }
+}
+
 const SYSTEM_PROMPT = `You are an expert clinical nutrition AI and computer vision analyst. Analyze the provided food image(s):
 - If the image contains a Nutrition Facts label (in German, Arabic, English, French, Spanish, etc.):
   * Extract exact numbers as primary ground truth. Read table rows top-to-bottom carefully.
   * MULTILINGUAL GUIDE:
-    - German: "Brennwert" = Calories (take kcal, NOT kJ), "Fett" = Fat, "gesättigte Fettsäuren" = Saturated Fat, "Kohlenhydrate" = Carbs, "Zucker" = Sugar, "Ballaststoffe" = Fiber, "Eiweiß" = Protein, "Salz" = Salt.
-    - French: "Valeur énergétique" = Calories (kcal), "Matières grasses" = Fat, "Glucides" = Carbs, "Protéines" = Protein, "Sel" = Salt.
-    - Arabic: "السعرات" = Calories, "الدهون" = Fat, "الكربوهيدرات" = Carbs, "البروتين" = Protein, "الألياف" = Fiber.
-  * If energy shows kJ/kcal (e.g. 1056/250), return ONLY the kcal number (e.g. 250). NEVER write slashes or expressions.
+    - German: "Brennwert" / "Energie" = Energy/Calories (take kcal, NEVER kJ!), "Fett" = Fat, "gesättigte Fettsäuren" = Saturated Fat, "Kohlenhydrate" = Carbs, "davon Zucker" = Sugar, "Ballaststoffe" = Fiber, "Eiweiß" = Protein, "Salz" = Salt.
+    - French: "Valeur énergétique" = Energy/Calories (take kcal, NEVER kJ!), "Matières grasses" = Fat, "Glucides" = Carbs, "Protéines" = Protein, "Sel" = Salt.
+    - Arabic: "السعرات" / "طاقة" = Calories (kcal), "الدهون" = Fat, "الكربوهيدرات" = Carbs, "البروتين" = Protein, "الألياف" = Fiber.
+    - English: "Calories" = kcal, "Total Fat" = Fat, "Total Carbohydrate" = Carbs, "Protein" = Protein.
+  * CRITICAL FOR ENERGY / CALORIES:
+    - Always return KCAL (kilocalories), NEVER kJ (kilojoules).
+    - If a label lists energy as both kJ and kcal (for example: "1056 kJ / 250 kcal" or "1056/250"), ALWAYS return ONLY the kcal number (250). Never return 1056!
+    - Calorie sanity rule: kcal ≈ (4 * protein_g) + (4 * carbs_g) + (9 * fat_g). If the label's energy row lists both numbers, the smaller number is always kcal!
   * Distinguish "per 100g" / "per 100ml" from "per serving" columns.
 - If it is a prepared meal / restaurant dish / mixed plate:
   * Estimate weight in grams and return in "estimated_weight_g".
   * Estimate nutrition values PER 100G in "per_100g".
+  * Calculate kcal consistently: kcal ≈ 4 * protein_g + 4 * carbs_g + 9 * fat_g.
   * Set "serving_size_g" to null unless distinct pieces are apparent.
 - If a USER HINT is provided, treat it as TRUSTED ground truth: it overrides visual guesses for the name and weights.
 
@@ -109,6 +147,196 @@ CRITICAL: Return ONLY a raw JSON object (all numbers must be pure numeric floats
   "confidence": number between 0.0 and 1.0,
   "notes": string or null
 }`;
+
+/* ---------- Gemini Vision Provider (Primary) ---------- */
+
+async function callGeminiVision(
+  labelImage: string,
+  frontImage: string | null,
+  note: string | null,
+  apiKey: string,
+  modelName: string
+): Promise<string> {
+  const labelParsed = parseDataUrl(labelImage);
+  if (!labelParsed) throw new Error("Invalid label image data URL");
+
+  const parts: Array<
+    | { text: string }
+    | { inline_data: { mime_type: string; data: string } }
+  > = [];
+
+  let textPrompt = SYSTEM_PROMPT;
+  if (note) {
+    textPrompt += `\n\nUSER HINT (TRUSTED — overrides visual guesses): "${note}"`;
+  }
+  parts.push({ text: textPrompt });
+  parts.push({
+    inline_data: {
+      mime_type: labelParsed.mimeType,
+      data: labelParsed.data,
+    },
+  });
+
+  if (frontImage) {
+    const frontParsed = parseDataUrl(frontImage);
+    if (frontParsed) {
+      parts.push({
+        inline_data: {
+          mime_type: frontParsed.mimeType,
+          data: frontParsed.data,
+        },
+      });
+    }
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          response_mime_type: "application/json",
+          temperature: 0.2,
+        },
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      throw new Error(`Gemini API HTTP ${res.status}: ${errBody}`);
+    }
+
+    const data = await res.json();
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) {
+      throw new Error("Gemini returned empty candidate text");
+    }
+    return rawText;
+  } catch (err) {
+    clearTimeout(timeout);
+    throw err;
+  }
+}
+
+/* ---------- NVIDIA Vision Provider (Fallback) ---------- */
+
+async function callNvidiaVision(
+  labelImage: string,
+  frontImage: string | null,
+  note: string | null,
+  apiKey: string
+): Promise<string> {
+  const userContent: Array<
+    | { type: "text"; text: string }
+    | { type: "image_url"; image_url: { url: string } }
+  > = [{ type: "text", text: SYSTEM_PROMPT }];
+
+  if (note) {
+    userContent.push({
+      type: "text",
+      text: `USER HINT (TRUSTED — overrides visual guesses): "${note}"`,
+    });
+  }
+
+  userContent.push({
+    type: "image_url",
+    image_url: { url: labelImage },
+  });
+
+  if (
+    isValidImageDataUrl(frontImage) &&
+    labelImage.length + frontImage.length <= 180_000
+  ) {
+    userContent.push({
+      type: "image_url",
+      image_url: { url: frontImage },
+    });
+  }
+
+  const primaryModel = process.env.NVIDIA_MODEL || "meta/llama-3.2-11b-vision-instruct";
+  const fallbackModel = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
+  const modelsToAttempt = primaryModel === fallbackModel
+    ? [primaryModel]
+    : [primaryModel, fallbackModel];
+
+  let nvidiaRes: globalThis.Response | null = null;
+  let lastErrorText = "";
+
+  for (let i = 0; i < modelsToAttempt.length; i++) {
+    const activeModel = modelsToAttempt[i];
+    const isReasoning = activeModel.includes("reasoning");
+    const timeoutMs = 35_000;
+
+    const requestPayload: Record<string, any> = {
+      model: activeModel,
+      messages: [{ role: "user", content: userContent }],
+      max_tokens: isReasoning ? 4096 : 1024,
+      temperature: isReasoning ? 0.6 : 0.2,
+      top_p: isReasoning ? 0.95 : 0.7,
+    };
+    if (isReasoning) {
+      requestPayload.reasoning_budget = 1024;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(requestPayload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        nvidiaRes = res;
+        break;
+      }
+
+      lastErrorText = await res.text().catch(() => "");
+      console.warn(`NVIDIA API model ${activeModel} returned ${res.status}:`, lastErrorText);
+
+      if (i < modelsToAttempt.length - 1) {
+        console.warn(`Falling back to ${modelsToAttempt[i + 1]}...`);
+        continue;
+      }
+
+      nvidiaRes = res;
+      break;
+    } catch (fetchErr: any) {
+      clearTimeout(timeout);
+      console.warn(`NVIDIA API call for ${activeModel} failed:`, fetchErr?.message || fetchErr);
+      if (i < modelsToAttempt.length - 1) {
+        console.warn(`Falling back to ${modelsToAttempt[i + 1]}...`);
+        continue;
+      }
+    }
+  }
+
+  if (!nvidiaRes || !nvidiaRes.ok) {
+    throw new Error(`NVIDIA API failed (${nvidiaRes?.status ?? 502}): ${lastErrorText}`);
+  }
+
+  const nvidiaData = await nvidiaRes.json().catch(() => ({}));
+  const rawContent: string = nvidiaData?.choices?.[0]?.message?.content ?? "";
+  if (!rawContent) {
+    throw new Error("NVIDIA returned empty completion");
+  }
+  return rawContent;
+}
 
 /* ---------- POST /api/scan ---------- */
 
@@ -154,19 +382,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Verify NVIDIA configuration
-    const apiKey = process.env.NVIDIA_API_KEY;
-    if (!apiKey) {
-      return Response.json(
-        {
-          error: "server_misconfigured",
-          message: "مفتاح NVIDIA_API_KEY غير مهيأ في الخادم.",
-        },
-        { status: 500 }
-      );
-    }
-
-    // 4. Validate input payload
+    // 3. Validate input payload
     const body = await req.json().catch(() => ({}));
     const labelImage: string | null = body?.labelImage ?? null;
     const frontImage: string | null = body?.frontImage ?? null;
@@ -185,130 +401,66 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Enforce size limit to protect NVIDIA endpoint (~180k chars)
     if (labelImage.length > MAX_IMAGE_CHARS) {
       return Response.json(
         {
           error: "payload_too_large",
-          message: "حجم الصورة كبير جداً (أكثر من 100 كيلوبايت). يرجى تقليل حجم الصورة وإعادة المحاولة.",
+          message: "حجم الصورة كبير جداً. يرجى تقليل حجم الصورة وإعادة المحاولة.",
         },
         { status: 413 }
       );
     }
 
-    // 5. Build NVIDIA Vision completion payload
-    const userContent: Array<
-      | { type: "text"; text: string }
-      | { type: "image_url"; image_url: { url: string } }
-    > = [{ type: "text", text: SYSTEM_PROMPT }];
+    // 4. Execute Vision AI: Try Gemini first, fallback to NVIDIA
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const nvidiaKey = process.env.NVIDIA_API_KEY;
 
-    if (note) {
-      userContent.push({
-        type: "text",
-        text: `USER HINT (TRUSTED — overrides visual guesses): "${note}"`,
-      });
-    }
+    let rawContent: string | null = null;
+    let providerUsed: "gemini" | "nvidia" = "gemini";
+    let lastError: any = null;
 
-    userContent.push({
-      type: "image_url",
-      image_url: { url: labelImage },
-    });
-
-    // Only include frontImage if total payload stays within safe limits
-    if (
-      isValidImageDataUrl(frontImage) &&
-      labelImage.length + frontImage.length <= MAX_IMAGE_CHARS
-    ) {
-      userContent.push({
-        type: "image_url",
-        image_url: { url: frontImage },
-      });
-    }
-
-    // 6. Call NVIDIA API with primary model + automatic fallback
-    const primaryModel = process.env.NVIDIA_MODEL || "meta/llama-3.2-11b-vision-instruct";
-    const fallbackModel = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
-    const modelsToAttempt = primaryModel === fallbackModel
-      ? [primaryModel]
-      : [primaryModel, fallbackModel];
-
-    let nvidiaRes: globalThis.Response | null = null;
-    let lastErrorText = "";
-
-    for (let i = 0; i < modelsToAttempt.length; i++) {
-      const activeModel = modelsToAttempt[i];
-      const isReasoning = activeModel.includes("reasoning");
-      const timeoutMs = 35_000;
-
-      const requestPayload: Record<string, any> = {
-        model: activeModel,
-        messages: [{ role: "user", content: userContent }],
-        max_tokens: isReasoning ? 4096 : 1024,
-        temperature: isReasoning ? 0.6 : 0.2,
-        top_p: isReasoning ? 0.95 : 0.7,
-      };
-      if (isReasoning) {
-        requestPayload.reasoning_budget = 1024;
-      }
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
+    if (geminiKey) {
       try {
-        const res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify(requestPayload),
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
+        console.log(`[Scan] Attempting primary provider: Gemini (${geminiModel})...`);
+        rawContent = await callGeminiVision(labelImage, frontImage, note, geminiKey, geminiModel);
+        providerUsed = "gemini";
+        console.log("[Scan] Gemini Vision succeeded!");
+      } catch (geminiErr: any) {
+        console.warn("[Scan] Gemini Vision failed, attempting fallback to NVIDIA:", geminiErr?.message || geminiErr);
+        lastError = geminiErr;
+      }
+    } else {
+      console.warn("[Scan] GEMINI_API_KEY not configured, falling back to NVIDIA.");
+    }
 
-        if (res.ok) {
-          nvidiaRes = res;
-          break;
-        }
-
-        lastErrorText = await res.text().catch(() => "");
-        console.warn(`NVIDIA API model ${activeModel} returned ${res.status}:`, lastErrorText);
-
-        if (i < modelsToAttempt.length - 1) {
-          console.warn(`Falling back to ${modelsToAttempt[i + 1]}...`);
-          continue;
-        }
-
-        nvidiaRes = res;
-        break;
-      } catch (fetchErr: any) {
-        clearTimeout(timeout);
-        console.warn(`NVIDIA API call for ${activeModel} failed:`, fetchErr?.message || fetchErr);
-        if (i < modelsToAttempt.length - 1) {
-          console.warn(`Falling back to ${modelsToAttempt[i + 1]}...`);
-          continue;
-        }
+    if (!rawContent && nvidiaKey) {
+      try {
+        console.log("[Scan] Calling NVIDIA Vision fallback...");
+        rawContent = await callNvidiaVision(labelImage, frontImage, note, nvidiaKey);
+        providerUsed = "nvidia";
+        console.log("[Scan] NVIDIA Vision succeeded!");
+      } catch (nvidiaErr: any) {
+        console.error("[Scan] NVIDIA Vision also failed:", nvidiaErr?.message || nvidiaErr);
+        lastError = nvidiaErr;
       }
     }
 
-    if (!nvidiaRes || !nvidiaRes.ok) {
-      console.error("NVIDIA API response error:", nvidiaRes?.status, lastErrorText);
+    if (!rawContent) {
       return Response.json(
         {
           error: "vision_failed",
-          message: `خطأ في استجابة خدمة الذكاء الاصطناعي (${nvidiaRes?.status ?? 502}).`,
+          message: "تعذر استجابة خدمة الذكاء الاصطناعي لتحليل الصورة. يرجى المحاولة مجدداً.",
+          details: lastError?.message,
         },
         { status: 502 }
       );
     }
 
-    const nvidiaData = await nvidiaRes.json().catch(() => ({}));
-    const rawContent: string = nvidiaData?.choices?.[0]?.message?.content ?? "";
-
-    // 7. Parse and validate JSON from model response
+    // 5. Parse and validate JSON from model response
     const jsonStr = extractJson(rawContent);
     if (!jsonStr) {
+      console.warn("Failed to extract JSON from raw content:", rawContent.slice(0, 300));
       return Response.json(
         {
           error: "unparseable",
@@ -344,6 +496,10 @@ export async function POST(req: NextRequest) {
 
     const result = check.data;
 
+    // 6. Fix kJ vs kcal and missing calories
+    fixNutrientsKcal(result.per_100g);
+    fixNutrientsKcal(result.per_serving);
+
     // Verify whether any nutritional values or food was recognized
     const has100 =
       result.per_100g && Object.values(result.per_100g).some((v) => v != null);
@@ -360,7 +516,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 8. Sanity check kcal vs macros
+    // 7. Sanity check kcal vs macros
     let sanity_ok = true;
     if (result.per_100g?.kcal != null) {
       sanity_ok = kcalSanityOk(
@@ -378,7 +534,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 9. Increment daily scan usage in Supabase
+    // 8. Increment daily scan usage in Supabase
     try {
       if (!usageRow) {
         await supabase.from("scan_usage").insert({
@@ -396,7 +552,7 @@ export async function POST(req: NextRequest) {
       console.warn("Failed to update scan_usage counter:", dbErr);
     }
 
-    // 10. Return validated ScanResult
+    // 9. Return validated ScanResult
     return Response.json({
       product_name: result.product_name || "صنف غذائي",
       brand: result.brand,
@@ -418,6 +574,7 @@ export async function POST(req: NextRequest) {
       notes: result.notes,
       sanity_ok,
       source: "ai",
+      provider: providerUsed,
     });
   } catch (err: any) {
     console.error("Fatal /api/scan error:", err);

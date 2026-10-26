@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useRef } from "react";
-import { AlertTriangle, Check, Sparkles } from "lucide-react";
+import { AlertTriangle, Check, Sparkles, Pencil } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAddFoodLog, useCreateFood, localDayStr } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
@@ -89,11 +89,16 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
     return h < 11 ? "breakfast" : h < 16 ? "lunch" : h < 22 ? "dinner" : "snack";
   });
   const [saveToFoods, setSaveToFoods] = useState(true);
-  const [advanced, setAdvanced] = useState(food.source === "manual");
+  const [advanced, setAdvanced] = useState(editable);
 
   const hasServing = !!food.servingSizeG && food.servingSizeG > 0;
   const effectiveGrams =
     qtyMode === "servings" && hasServing ? servings * (food?.servingSizeG ?? 0) : grams;
+
+  const derivedKcal = Math.round(4 * per100.p + 4 * per100.c + 9 * per100.f);
+  const hasMacros = per100.p > 0 || per100.c > 0 || per100.f > 0;
+  const kcalDiff = Math.abs(per100.kcal - derivedKcal);
+  const hasKcalMismatch = hasMacros && (kcalDiff > 15 && kcalDiff / Math.max(derivedKcal, 1) > 0.15);
 
   const totals = useMemo(() => {
     const k = effectiveGrams / 100;
@@ -251,44 +256,128 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
 
         {/* per-100g values */}
         {editable ? (
-          <div>
-            <button
-              onClick={() => setAdvanced((a) => !a)}
-              className="w-full flex items-center justify-between text-xs font-semibold text-muted-foreground min-h-[36px]"
-            >
-              <span>
-                {t("per_100g")} — {nf(per100.kcal)} {t("kcal")}
-              </span>
-              <span className="text-primary">{advanced ? "−" : "+"}</span>
-            </button>
+          <div className="rounded-2xl bg-secondary/50 border border-border/60 p-3.5 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Pencil className="size-3.5 text-primary" />
+                <span className="text-xs font-bold text-foreground">
+                  {t("per_100g")}
+                </span>
+                <span className="text-[11px] text-muted-foreground font-medium">
+                  ({t("edit")} السعرات والماكروز)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAdvanced((a) => !a)}
+                className="text-xs font-semibold text-primary hover:underline"
+              >
+                {advanced ? "− إخفاء" : "+ تعديل القيم"}
+              </button>
+            </div>
+
             {advanced && (
-              <div className="grid grid-cols-4 gap-2 mt-2">
-                {(
-                  [
-                    ["kcal", t("kcal")],
-                    ["p", t("protein")],
-                    ["c", t("carbs")],
-                    ["f", t("fat")],
-                  ] as const
-                ).map(([key, label]) => (
-                  <label key={key} className="flex flex-col gap-1">
-                    <span className="text-xs font-semibold text-muted-foreground text-center leading-normal">
-                      {label}
+              <>
+                <div className="grid grid-cols-4 gap-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-bold text-primary text-center leading-normal">
+                      {t("kcal")}
                     </span>
                     <NumInput
-                      value={per100[key]}
+                      value={per100.kcal}
                       onChange={(v) =>
-                        setPer100((prev) => ({ ...prev, [key]: typeof v === "number" ? v : 0 }))
+                        setPer100((prev) => ({
+                          ...prev,
+                          kcal: typeof v === "number" ? Math.round(v) : 0,
+                        }))
                       }
                       min={0}
-                      max={2000}
-                      decimals={1}
-                      ariaLabel={label}
-                      className="h-11 bg-secondary text-center"
+                      max={3000}
+                      decimals={0}
+                      ariaLabel={t("kcal")}
+                      className="h-11 bg-background text-center font-bold text-primary border border-primary/25"
                     />
                   </label>
-                ))}
-              </div>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-bold text-[var(--protein)] text-center leading-normal">
+                      {t("protein")}
+                    </span>
+                    <NumInput
+                      value={per100.p}
+                      onChange={(v) =>
+                        setPer100((prev) => ({
+                          ...prev,
+                          p: typeof v === "number" ? v : 0,
+                        }))
+                      }
+                      min={0}
+                      max={1000}
+                      decimals={1}
+                      ariaLabel={t("protein")}
+                      className="h-11 bg-background text-center font-bold border border-border"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-bold text-[var(--carbs-text)] text-center leading-normal">
+                      {t("carbs")}
+                    </span>
+                    <NumInput
+                      value={per100.c}
+                      onChange={(v) =>
+                        setPer100((prev) => ({
+                          ...prev,
+                          c: typeof v === "number" ? v : 0,
+                        }))
+                      }
+                      min={0}
+                      max={1000}
+                      decimals={1}
+                      ariaLabel={t("carbs")}
+                      className="h-11 bg-background text-center font-bold border border-border"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-bold text-[var(--fat)] text-center leading-normal">
+                      {t("fat")}
+                    </span>
+                    <NumInput
+                      value={per100.f}
+                      onChange={(v) =>
+                        setPer100((prev) => ({
+                          ...prev,
+                          f: typeof v === "number" ? v : 0,
+                        }))
+                      }
+                      min={0}
+                      max={1000}
+                      decimals={1}
+                      ariaLabel={t("fat")}
+                      className="h-11 bg-background text-center font-bold border border-border"
+                    />
+                  </label>
+                </div>
+
+                {hasKcalMismatch && (
+                  <div className="p-2.5 rounded-xl bg-carbs/10 border border-carbs/25 flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 text-carbs-text font-semibold">
+                      <AlertTriangle className="size-4 shrink-0" />
+                      <span>
+                        حسب الماكروز: {nf(derivedKcal)} {t("kcal")}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPer100((prev) => ({ ...prev, kcal: derivedKcal }));
+                        toast.success(`تم تعديل السعرات إلى ${derivedKcal}`);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground font-bold shrink-0 text-[11px] active:scale-95 transition-transform shadow-sm"
+                    >
+                      تصحيح السعرات
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         ) : (
