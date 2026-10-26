@@ -429,9 +429,11 @@ export function ProgressScreen() {
               : "—"
           }
           unit={toGoal != null && toGoal > 0 ? unit : undefined}
-        </div>
+        />
+      </div>
+    </div>
 
-        <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
           {/* weekly calories — average follows the selected period */}
           <section className="nutra-card p-5" aria-label={t("avg_kcal")}>
         <div className="flex items-center justify-between mb-1">
@@ -546,6 +548,7 @@ export function ProgressScreen() {
             <p className="text-lg font-bold tabular">{nf(stats.loggedDays)}</p>
           </div>
         </section>
+      </div>
       </div>
       </div>
     </div>
