@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Search, Star, ScanLine, PencilLine, Package } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Search, Star, ScanLine, PencilLine, Package, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useFoods, useToggleFavorite } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
@@ -17,8 +17,17 @@ import { Segmented } from "../segmented";
 export function LogScreen({ onPickFood }: { onPickFood: (f: PendingFood) => void }) {
   const { t, nf } = useI18n();
   const [q, setQ] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
   const [filter, setFilter] = useState<"all" | "fav">("all");
-  const { data: foods, isLoading } = useFoods(q, filter === "fav");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQ(q);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [q]);
+
+  const { data: foods, isLoading } = useFoods(debouncedQ, filter === "fav");
   const toggleFav = useToggleFavorite();
   const openSheet = useAppStore((s) => s.openSheet);
   /** saved meal picked from the وجباتي bar */
@@ -36,17 +45,17 @@ export function LogScreen({ onPickFood }: { onPickFood: (f: PendingFood) => void
             <ScanLine className="size-5" />
           </span>
           <span className="text-sm font-bold">{t("scan_product")}</span>
-          <span className="text-[11px] text-muted-foreground leading-snug">{t("scan_hint")}</span>
+          <span className="text-xs text-muted-foreground leading-relaxed">{t("scan_hint")}</span>
         </button>
         <button
           onClick={() => openSheet("manual-food")}
           className="nutra-card p-4 flex flex-col items-start gap-2 text-start active:scale-[0.97] transition-transform"
         >
-          <span className="size-10 rounded-2xl bg-carbs/12 text-carbs grid place-items-center">
+          <span className="size-10 rounded-2xl bg-carbs/12 text-carbs-text grid place-items-center">
             <PencilLine className="size-5" />
           </span>
           <span className="text-sm font-bold">{t("manual_entry")}</span>
-          <span className="text-[11px] text-muted-foreground leading-snug">{t("manual_hint")}</span>
+          <span className="text-xs text-muted-foreground leading-relaxed">{t("manual_hint")}</span>
         </button>
       </div>
 
@@ -54,15 +63,28 @@ export function LogScreen({ onPickFood }: { onPickFood: (f: PendingFood) => void
       <MyMealsBar onPick={setAddingMeal} />
 
       {/* search */}
-      <div className="relative">
-        <Search className="absolute start-4 top-1/2 -translate-y-1/2 size-4.5 text-muted-foreground" />
+      <div className="relative flex items-center">
+        <Search className="absolute start-4 top-1/2 -translate-y-1/2 size-4.5 text-muted-foreground pointer-events-none" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t("search_foods")}
           aria-label={t("search_foods")}
-          className="w-full h-13 rounded-[22px] bg-card border border-border ps-11 pe-4 text-base font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+          className="w-full h-13 rounded-[22px] bg-card border border-border ps-11 pe-12 text-base font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
         />
+        {q && (
+          <button
+            type="button"
+            onClick={() => {
+              setQ("");
+              setDebouncedQ("");
+            }}
+            aria-label={t("clear_search")}
+            className="absolute end-1 size-11 grid place-items-center text-muted-foreground hover:text-foreground transition-colors rounded-xl"
+          >
+            <X className="size-4.5" />
+          </button>
+        )}
       </div>
 
       <Segmented
@@ -76,7 +98,7 @@ export function LogScreen({ onPickFood }: { onPickFood: (f: PendingFood) => void
       />
 
       {/* list */}
-      {isLoading ? (
+      {isLoading && !foods ? (
         <div className="flex flex-col gap-2">
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-[72px] rounded-[22px]" />
@@ -87,8 +109,28 @@ export function LogScreen({ onPickFood }: { onPickFood: (f: PendingFood) => void
           <span className="size-12 rounded-2xl bg-secondary grid place-items-center">
             <Package className="size-6 text-muted-foreground" />
           </span>
-          <p className="text-sm font-semibold">{q ? t("no_results") : t("no_foods")}</p>
-          {!q && (
+          <p className="text-sm font-semibold">{debouncedQ || q ? t("no_results") : t("no_foods")}</p>
+          {debouncedQ || q ? (
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setQ("");
+                  setDebouncedQ("");
+                }}
+                className="h-11 px-4 rounded-full bg-secondary text-foreground text-xs font-bold hover:bg-secondary/80 active:scale-95 transition-all"
+              >
+                {t("clear_search")}
+              </button>
+              <button
+                type="button"
+                onClick={() => openSheet("manual-food")}
+                className="h-11 px-4 rounded-full bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 active:scale-95 transition-all shadow-sm"
+              >
+                {t("add_custom_food")}
+              </button>
+            </div>
+          ) : (
             <p className="text-xs text-muted-foreground">{t("no_foods_hint")}</p>
           )}
         </div>
@@ -108,6 +150,11 @@ export function LogScreen({ onPickFood }: { onPickFood: (f: PendingFood) => void
                   protein100: f.protein100,
                   carbs100: f.carbs100,
                   fat100: f.fat100,
+                  sugar100: f.sugar100,
+                  satFat100: f.satFat100,
+                  fiber100: f.fiber100,
+                  salt100: f.salt100,
+                  imageUrl: f.imageUrl,
                   source: "myfoods",
                 })
               }
@@ -155,7 +202,7 @@ function FoodRow({
         </div>
         <div className="flex flex-col items-end shrink-0">
           <span className="text-sm font-bold tabular">{nf(food.kcal100)}</span>
-          <span className="text-[10px] text-muted-foreground font-medium">
+          <span className="text-xs text-muted-foreground font-medium leading-normal">
             {t("kcal")}/{t("per_100g")}
           </span>
         </div>
@@ -164,8 +211,8 @@ function FoodRow({
         aria-label={`${t("favorites")}: ${food.name}`}
         onClick={onToggleFav}
         className={cn(
-          "size-10 grid place-items-center rounded-full transition-colors",
-          food.isFavorite ? "text-carbs" : "text-muted-foreground/40 hover:text-carbs"
+          "size-11 grid place-items-center rounded-full transition-colors",
+          food.isFavorite ? "text-carbs-text" : "text-muted-foreground/40 hover:text-carbs-text"
         )}
       >
         <Star className="size-5" fill={food.isFavorite ? "currentColor" : "none"} />

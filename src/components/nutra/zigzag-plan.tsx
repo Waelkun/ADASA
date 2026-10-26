@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { CalendarRange, Square } from "lucide-react";
+import { CalendarRange, Square, ArrowUp, ArrowDown } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useUpdateProfile, localDayStr } from "@/lib/api";
 import { effectiveKcalGoal, daysBetween } from "@/lib/nutrition";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { weekdayAr } from "@/lib/date-ar";
+import { formatWeekday } from "@/lib/date-ar";
 
 type PlanId = "plan1" | "plan2";
 
@@ -30,7 +30,7 @@ export function ZigzagPlanCard({
   plan: string | null;
   start: string | null;
 }) {
-  const { t, nf } = useI18n();
+  const { t, nf, lang } = useI18n();
   const update = useUpdateProfile();
   const [picked, setPicked] = useState<PlanId | null>(null);
 
@@ -93,13 +93,13 @@ export function ZigzagPlanCard({
               <button
                 onClick={() => adopt(null)}
                 disabled={update.isPending}
-                className="nutra-chip bg-secondary text-negative gap-1 min-h-[36px] active:scale-95 transition-transform"
+                className="nutra-chip bg-secondary text-negative gap-1 min-h-[44px] px-3.5 active:scale-95 transition-transform"
               >
                 <Square className="size-3" />
                 {t("zigzag_stop")}
               </button>
             </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               {t("today_log")}: <span className="font-bold text-foreground tabular">{nf(todayKcal)}</span> ·{" "}
               {t("tomorrow")}: <span className="font-bold text-foreground tabular">{nf(tomorrowKcal)}</span> {t("kcal")}
               {" · "}
@@ -115,15 +115,27 @@ export function ZigzagPlanCard({
                     d.isToday ? "bg-primary/15 ring-1 ring-primary/40" : "bg-secondary"
                   )}
                 >
-                  <span className="text-[9px] font-bold text-muted-foreground">
-                    {weekdayAr(new Date(d.date + "T00:00:00"))}
+                  <span className="text-xs font-bold text-muted-foreground">
+                    {formatWeekday(new Date(d.date + "T00:00:00"), lang)}
                   </span>
                   <span
                     className={cn(
-                      "text-[10px] font-bold tabular",
-                      d.kcal > baseKcal ? "text-carbs" : d.kcal < baseKcal ? "text-primary" : "text-foreground"
+                      "text-xs font-bold tabular inline-flex items-center gap-0.5",
+                      d.kcal > baseKcal ? "text-carbs-text" : d.kcal < baseKcal ? "text-primary" : "text-foreground"
                     )}
                   >
+                    {d.kcal > baseKcal && (
+                      <>
+                        <ArrowUp className="size-2.5 shrink-0" aria-hidden />
+                        <span className="sr-only">({t("zigzag_higher")})</span>
+                      </>
+                    )}
+                    {d.kcal < baseKcal && (
+                      <>
+                        <ArrowDown className="size-2.5 shrink-0" aria-hidden />
+                        <span className="sr-only">({t("zigzag_lower")})</span>
+                      </>
+                    )}
                     {nf(d.kcal)}
                   </span>
                 </div>
@@ -159,7 +171,7 @@ export function ZigzagPlanCard({
               )}
             >
               <span className="text-sm font-bold">{t(p.nameKey)}</span>
-              <span className="text-[11px] text-muted-foreground leading-relaxed">{t(p.descKey)}</span>
+              <span className="text-xs text-muted-foreground leading-relaxed">{t(p.descKey)}</span>
               {picked === p.id && (
                 <span className="text-xs font-semibold text-primary tabular">
                   {t("today_log")}: {nf(effectiveKcalGoal(baseKcal, p.id, today, today))} ·{" "}
@@ -184,7 +196,7 @@ export function ZigzagPlanCard({
       )}
 
       {active && start && (
-        <p className="text-[10px] text-muted-foreground tabular text-center">
+        <p className="text-xs text-muted-foreground tabular text-center leading-normal">
           {t("zigzag_started")} {start} · {nf(daysBetween(start, today))} {t("days_count")}
         </p>
       )}

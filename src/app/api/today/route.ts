@@ -1,25 +1,67 @@
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
-import { getProfile, isDayStr, todayStr, calcStreak } from "@/lib/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
+import { getUserProfile, isDayStr, todayStr, calcStreak, jsonError } from "@/lib/server";
+import {
+  mapFoodLogFromDb,
+  mapWaterLogFromDb,
+  mapWeightFromDb,
+  mapWorkoutFromDb,
+} from "@/lib/mappers";
 import { effectiveKcalGoal } from "@/lib/nutrition";
-import type { MealType, SourceType, Workout } from "@/lib/types";
 
 /** GET /api/today?date=YYYY-MM-DD — aggregated Today screen payload */
 export async function GET(req: NextRequest) {
+  const user = await getAuthUser();
+  if (!user) return jsonError("Unauthorized", 401);
+
   const q = req.nextUrl.searchParams.get("date");
   const date = isDayStr(q) ? q : todayStr();
 
-  const [profile, logs, waterEntries, weightToday, workoutsToday, streak] = await Promise.all([
-    getProfile(),
-    db.foodLog.findMany({
-      where: { dayDate: date },
-      orderBy: { loggedAt: "asc" },
-    }),
-    db.waterLog.findMany({ where: { dayDate: date }, orderBy: { loggedAt: "asc" } }),
-    db.weightLog.findUnique({ where: { date } }),
-    db.workout.findFirst({ where: { date } }),
-    calcStreak(date),
+  const supabase = await createClient();
+
+  const [
+    profile,
+    foodLogsRes,
+    waterRes,
+    weightRes,
+    workoutRes,
+    streak,
+  ] = await Promise.all([
+    getUserProfile(supabase, user.id),
+    supabase
+      .from("food_logs")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("day_date", date)
+      .order("logged_at", { ascending: true }),
+    supabase
+      .from("water_logs")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("day_date", date)
+      .order("logged_at", { ascending: true }),
+    supabase
+      .from("weight_logs")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("date", date)
+      .maybeSingle(),
+    supabase
+      .from("workouts")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("date", date)
+      .maybeSingle(),
+    calcStreak(supabase, user.id, date),
   ]);
+
+  const rawLogs = foodLogsRes.data || [];
+  const rawWater = waterRes.data || [];
+  const weightData = weightRes.data;
+  const workoutData = workoutRes.data;
+
+  const logs = rawLogs.map(mapFoodLogFromDb);
+  const waterEntries = rawWater.map(mapWaterLogFromDb);
 
   const totals = logs.reduce(
     (acc, l) => ({
@@ -30,13 +72,12 @@ export async function GET(req: NextRequest) {
     }),
     { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   );
+
   totals.kcal = Math.round(totals.kcal);
   totals.protein = Math.round(totals.protein * 10) / 10;
   totals.carbs = Math.round(totals.carbs * 10) / 10;
   totals.fat = Math.round(totals.fat * 10) / 10;
 
-  // zigzag: the ring (and every kcal-goal display on Today) follows the
-  // day's target from the active plan; the stored base goal is untouched
   const kcalGoalToday = effectiveKcalGoal(
     profile.kcalGoal,
     profile.zigzagPlan,
@@ -46,31 +87,14 @@ export async function GET(req: NextRequest) {
 
   return Response.json({
     profile: { ...profile, kcalGoal: kcalGoalToday, kcalGoalBase: profile.kcalGoal },
-    logs: logs.map((l) => ({
-      ...l,
-      loggedAt: l.loggedAt.toISOString(),
-      mealType: l.mealType as MealType,
-      source: l.source as SourceType,
-    })),
+    logs,
     totals,
     waterToday: {
       total: waterEntries.reduce((a, w) => a + w.amountMl, 0),
-      entries: waterEntries.map((w) => ({
-        id: w.id,
-        amountMl: w.amountMl,
-        loggedAt: w.loggedAt.toISOString(),
-      })),
+      entries: waterEntries,
     },
-    weightToday,
-    workoutToday: workoutsToday
-      ? ({
-          id: workoutsToday.id,
-          date: workoutsToday.date,
-          muscleGroups: JSON.parse(workoutsToday.muscleGroups) as string[],
-          durationMin: workoutsToday.durationMin,
-          note: workoutsToday.note,
-        } as Workout)
-      : null,
+    weightToday: weightData ? mapWeightFromDb(weightData) : null,
+    workoutToday: workoutData ? mapWorkoutFromDb(workoutData) : null,
     streak,
   });
 }

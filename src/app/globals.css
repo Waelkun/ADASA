@@ -40,6 +40,7 @@
   /* Nutra semantic colors */
   --color-protein: var(--protein);
   --color-carbs: var(--carbs);
+  --color-carbs-text: var(--carbs-text);
   --color-fat: var(--fat);
   --color-water: var(--water);
   --color-positive: var(--positive);
@@ -52,6 +53,10 @@
 }
 
 :root {
+  --dock-height: 56px;
+  --dock-bottom-offset: max(env(safe-area-inset-bottom, 0px), 14px);
+  --dock-clearance: calc(var(--dock-height) + var(--dock-bottom-offset) + 28px);
+  --dock-sticky: calc(var(--dock-height) + var(--dock-bottom-offset) + 12px);
   --radius: 1rem;
   /* iOS-style airy light theme */
   --background: #f4f6f8;
@@ -65,7 +70,7 @@
   --secondary: #eef2f6;
   --secondary-foreground: #344054;
   --muted: #eef2f6;
-  --muted-foreground: #667085;
+  --muted-foreground: #5f6a7d;
   --accent: #e9f9f1;
   --accent-foreground: #047857;
   --destructive: #f04438;
@@ -88,6 +93,7 @@
   /* macro / semantic */
   --protein: #22c55e;
   --carbs: #f59e0b;
+  --carbs-text: #a15c07;
   --fat: #f97066;
   --water: #14b8a6;
   --positive: #12b76a;
@@ -111,8 +117,8 @@
   --accent: #123529;
   --accent-foreground: #6ee7b7;
   --destructive: #f04438;
-  --border: #22302a;
-  --input: #22302a;
+  --border: #2e4138;
+  --input: #4e6d5e;
   --ring: #10b981;
   --chart-1: #10b981;
   --chart-2: #f59e0b;
@@ -125,10 +131,11 @@
   --sidebar-primary-foreground: #052e21;
   --sidebar-accent: #123529;
   --sidebar-accent-foreground: #6ee7b7;
-  --sidebar-border: #22302a;
+  --sidebar-border: #2e4138;
   --sidebar-ring: #10b981;
   --protein: #34d399;
   --carbs: #fbbf24;
+  --carbs-text: #fbbf24;
   --fat: #fb8a84;
   --water: #2dd4bf;
   --positive: #34d399;
@@ -138,7 +145,11 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
   body {
     @apply bg-background text-foreground;
@@ -163,7 +174,7 @@
 }
 .dark .nutra-card {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.25);
-  border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  border-color: color-mix(in srgb, var(--border) 85%, transparent);
 }
 
 .nutra-chip {

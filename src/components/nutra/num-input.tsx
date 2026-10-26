@@ -18,6 +18,7 @@ export function NumInput({
   max = Number.POSITIVE_INFINITY,
   decimals = 0,
   allowEmpty = false,
+  placeholder,
   className,
   ariaLabel,
   inputMode = "decimal",
@@ -29,6 +30,7 @@ export function NumInput({
   step?: number;
   decimals?: number;
   allowEmpty?: boolean;
+  placeholder?: string;
   className?: string;
   ariaLabel?: string;
   inputMode?: "decimal" | "numeric";
@@ -87,8 +89,9 @@ export function NumInput({
       }}
       inputMode={inputMode}
       aria-label={ariaLabel}
+      placeholder={placeholder}
       className={cn(
-        "text-base font-bold tabular bg-transparent focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-2xl",
+        "min-w-0 text-base font-bold tabular bg-transparent focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-2xl",
         className
       )}
     />

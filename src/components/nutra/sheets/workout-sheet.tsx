@@ -7,9 +7,20 @@ import { useAppStore } from "@/lib/store";
 import { useWorkouts, useAddWorkout, useUpdateWorkout, useDeleteWorkout, localDayStr } from "@/lib/api";
 import { MUSCLE_GROUPS, type MuscleGroup, type Workout } from "@/lib/types";
 import { SheetShell } from "./sheet-shell";
-import { groupColor, groupLabelKey } from "../screens/workouts";
+import { groupColor, groupLabelKey, groupTextColor } from "../screens/workouts";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const PRESETS: { key: string; groups: MuscleGroup[] }[] = [
   { key: "preset_push", groups: ["chest", "shoulders", "arms"] },
@@ -29,7 +40,7 @@ export function WorkoutSheet() {
   const date = workoutDate ?? localDayStr();
   const monthKey = date.slice(0, 7);
   const { data } = useWorkouts(monthKey);
-  const existing = data?.workouts.find((w) => w.date === date) ?? null;
+  const existing = data?.workouts?.find((w) => w.date === date) ?? null;
 
   return (
     <SheetShell
@@ -127,13 +138,16 @@ function WorkoutForm({ date, existing }: { date: string; existing: Workout | nul
               aria-pressed={active}
               className={cn(
                 "relative h-16 rounded-[18px] text-xs font-bold flex items-center justify-center transition-all active:scale-95 border-2",
-                active ? "text-white border-transparent" : "bg-secondary text-muted-foreground border-transparent"
+                active ? "border-transparent" : "bg-secondary text-muted-foreground border-transparent"
               )}
-              style={active ? { background: groupColor(g) } : undefined}
+              style={active ? { background: groupColor(g), color: groupTextColor(g) } : undefined}
             >
               {active && (
-                <span className="absolute top-1.5 end-1.5 size-4 rounded-full bg-white/25 grid place-items-center">
-                  <Check className="size-3 text-white" strokeWidth={3} />
+                <span
+                  className="absolute top-1.5 end-1.5 size-4 rounded-full grid place-items-center"
+                  style={{ background: groupTextColor(g) === "#ffffff" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.15)" }}
+                >
+                  <Check className="size-3" style={{ color: groupTextColor(g) }} strokeWidth={3} />
                 </span>
               )}
               {t(groupLabelKey(g) as "chest")}
@@ -163,20 +177,44 @@ function WorkoutForm({ date, existing }: { date: string; existing: Workout | nul
 
       <div className="flex gap-2">
         {existing && (
-          <button
-            onClick={() =>
-              deleteW.mutate(existing.id, {
-                onSuccess: () => {
-                  toast.success(t("deleted_toast"));
-                  closeSheet();
-                },
-              })
-            }
-            aria-label={t("delete")}
-            className="size-14 rounded-full bg-negative/10 text-negative grid place-items-center active:scale-95 transition-transform shrink-0"
-          >
-            <Trash2 className="size-5" />
-          </button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                aria-label={t("delete")}
+                className="size-14 rounded-full bg-negative/10 text-negative grid place-items-center active:scale-95 transition-transform shrink-0"
+              >
+                <Trash2 className="size-5" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="rounded-[28px] max-w-sm">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-start">{t("delete_workout_q")}</AlertDialogTitle>
+                <AlertDialogDescription className="text-start leading-relaxed">
+                  {t("delete_workout_desc")}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex-row gap-2 justify-end mt-2">
+                <AlertDialogCancel className="rounded-full h-11 px-5 font-bold text-xs mt-0">
+                  {t("cancel")}
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() =>
+                    deleteW.mutate(existing.id, {
+                      onSuccess: () => {
+                        toast.success(t("deleted_toast"));
+                        closeSheet();
+                      },
+                      onError: () => toast.error(t("error_toast")),
+                    })
+                  }
+                  className="rounded-full h-11 px-5 font-bold text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {t("delete")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
         <button
           onClick={save}

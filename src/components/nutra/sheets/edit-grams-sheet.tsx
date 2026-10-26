@@ -139,7 +139,7 @@ function EditGramsForm({ log, onClose }: { log: FoodLog; onClose: () => void }) 
             max={5000}
             decimals={1}
             ariaLabel={t("quantity")}
-            className="w-36 text-center nutra-hero-num text-5xl focus:ring-0"
+            className="w-36 text-center nutra-hero-num text-5xl"
           />
           <span className="text-sm font-bold text-muted-foreground">{t("gramsFull")}</span>
         </div>
@@ -165,23 +165,23 @@ function EditGramsForm({ log, onClose }: { log: FoodLog; onClose: () => void }) 
             <span className="nutra-hero-num text-3xl tabular">{nf(totals.kcal)}</span>
             <span className="text-xs font-bold text-muted-foreground">{t("kcal")}</span>
           </div>
-          <span className="text-[11px] font-medium text-muted-foreground">{t("total")}</span>
+          <span className="text-xs font-medium text-muted-foreground leading-normal">{t("total")}</span>
         </div>
         <div className="mt-2.5 grid grid-cols-3 text-center">
           {(
             [
               [t("protein"), totals.p, "var(--protein)"],
-              [t("carbs"), totals.c, "var(--carbs)"],
+              [t("carbs"), totals.c, "var(--carbs-text)"],
               [t("fat"), totals.f, "var(--fat)"],
             ] as const
           ).map(([label, v, color]) => (
             <div key={label} className="flex flex-col">
-              <span className="text-[10px] font-semibold" style={{ color }}>
+              <span className="text-xs font-semibold leading-normal" style={{ color }}>
                 {label}
               </span>
               <span className="text-base font-bold tabular">
                 {nf(v, 1)}
-                <span className="text-[9px] text-muted-foreground">{t("grams")}</span>
+                <span className="text-xs text-muted-foreground">{t("grams")}</span>
               </span>
             </div>
           ))}

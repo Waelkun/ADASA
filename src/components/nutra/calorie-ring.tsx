@@ -31,8 +31,15 @@ export function CalorieRing({ eaten, goal, size = 220 }: CalorieRingProps) {
   const offset = c * (1 - progress);
 
   return (
-    <div className="relative inline-flex items-center justify-center" role="img"
-      aria-label={`${nf(eaten)} / ${nf(goal)} kcal`}>
+    <div
+      className="relative inline-flex items-center justify-center"
+      role="progressbar"
+      aria-valuenow={Math.round(clamped * 100)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuetext={`${nf(eaten)} ${t("of")} ${nf(goal)} ${t("kcal")}`}
+      aria-label={`${nf(eaten)} / ${nf(goal)} ${t("kcal")}`}
+    >
       <svg width={size} height={size} className="-rotate-90">
         {/* soft track */}
         <circle

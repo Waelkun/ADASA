@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { TrendingUp, Dumbbell, TrendingDown, Minus, ChevronLeft, Loader2, Sun, Moon } from "lucide-react";
+import { TrendingUp, Dumbbell, TrendingDown, Minus, ChevronRight, Loader2, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useI18n } from "@/lib/i18n";
 import { useUpdateProfile, useWeight, useLogWeight, localDayStr } from "@/lib/api";
+import { kgToLb, lbToKg } from "@/lib/nutrition";
 import type { Profile } from "@/lib/types";
 import { NumInput } from "./num-input";
 import { toast } from "sonner";
@@ -38,11 +39,16 @@ export function OnboardingScreen({ profile }: { profile: Profile }) {
   const [name, setName] = useState("");
   const [goal, setGoal] = useState<Goal>((profile.goalType as Goal) ?? "lose");
 
+  const isImp = profile.units === "imperial";
   // weight prefills from the LAST recorded weight (syncs until touched)
   const lastW = weights?.length ? weights[weights.length - 1].weightKg : null;
-  const [weightEdit, setWeightEdit] = useState<number | "">(80);
+  const defaultWeight = isImp ? 175 : 80;
+  const initialWeight = lastW != null
+    ? (isImp ? Math.round(kgToLb(lastW) * 10) / 10 : lastW)
+    : defaultWeight;
+  const [weightEdit, setWeightEdit] = useState<number | "">(initialWeight);
   const [weightTouched, setWeightTouched] = useState(false);
-  const weightValue = weightTouched ? weightEdit : (lastW ?? weightEdit);
+  const weightValue = weightTouched ? weightEdit : initialWeight;
 
   // age prefills from the profile birth year (syncs until touched)
   const [ageEdit, setAgeEdit] = useState<number | "">(30);
@@ -60,8 +66,10 @@ export function OnboardingScreen({ profile }: { profile: Profile }) {
     if (save) {
       if (name.trim()) patch.displayName = name.trim().slice(0, 40);
       patch.goalType = goal;
-      if (typeof weightValue === "number" && weightValue >= 25 && weightValue <= 350 && (weightTouched || lastW == null)) {
-        saveWeight = weightValue;
+      const minW = isImp ? 55 : 25;
+      const maxW = isImp ? 770 : 350;
+      if (typeof weightValue === "number" && weightValue >= minW && weightValue <= maxW && (weightTouched || lastW == null)) {
+        saveWeight = isImp ? lbToKg(weightValue) : weightValue;
       }
       if (typeof ageValue === "number" && ageValue >= 10 && ageValue <= 100) {
         patch.birthYear = new Date().getFullYear() - Math.round(ageValue);
@@ -70,7 +78,7 @@ export function OnboardingScreen({ profile }: { profile: Profile }) {
     update.mutate(patch, {
       onSuccess: () => {
         if (saveWeight != null) {
-          logWeight.mutate({ date: localDayStr(), weightKg: saveWeight });
+          logWeight.mutate({ date: localDayStr(), weightKg: Math.round(saveWeight * 10) / 10 });
         }
         toast.success(t("saved_toast"));
       },
@@ -81,6 +89,11 @@ export function OnboardingScreen({ profile }: { profile: Profile }) {
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       <div className="mx-auto w-full max-w-md flex-1 flex flex-col px-6 pt-safe pb-[max(env(safe-area-inset-bottom),24px)]">
+        {/* step announcement for assistive technologies */}
+        <div className="sr-only" role="status" aria-live="polite">
+          {step === 0 ? t("onb_step_1") : step === 1 ? t("onb_step_2") : t("onb_step_3")}
+        </div>
+
         {/* progress dots */}
         <div className="flex items-center justify-center gap-2 pt-6 pb-2" aria-hidden>
           {[0, 1, 2].map((i) => (
@@ -132,7 +145,7 @@ export function OnboardingScreen({ profile }: { profile: Profile }) {
                     <span
                       className={cn(
                         "size-12 rounded-2xl grid place-items-center",
-                        th.id === "light" ? "bg-secondary text-carbs" : "bg-[#0b1210] text-primary"
+                        th.id === "light" ? "bg-secondary text-carbs-text" : "bg-[#0b1210] text-primary"
                       )}
                     >
                       <th.icon className="size-6" />
@@ -190,13 +203,14 @@ export function OnboardingScreen({ profile }: { profile: Profile }) {
                         setWeightEdit(v);
                         setWeightTouched(true);
                       }}
-                      min={25}
-                      max={350}
+                      min={isImp ? 55 : 25}
+                      max={isImp ? 770 : 350}
                       decimals={1}
+                      placeholder={String(defaultWeight)}
                       ariaLabel={t("onb_weight")}
-                      className="w-full h-12 bg-secondary px-3 text-center"
+                      className="w-full h-12 bg-secondary ps-2 pe-10 text-center text-base font-bold tabular"
                     />
-                    <span className="absolute end-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground pointer-events-none">{t("kg")}</span>
+                    <span className="absolute end-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground pointer-events-none">{isImp ? t("lb") : t("kg")}</span>
                   </div>
                 </label>
                 <label className="flex flex-col gap-1.5 min-w-0">
@@ -211,7 +225,7 @@ export function OnboardingScreen({ profile }: { profile: Profile }) {
                     max={100}
                     inputMode="numeric"
                     ariaLabel={t("onb_age")}
-                    className="w-full h-12 bg-secondary px-3 text-center"
+                    className="w-full h-12 bg-secondary px-3 text-center text-base font-bold tabular"
                   />
                 </label>
               </div>
@@ -228,7 +242,7 @@ export function OnboardingScreen({ profile }: { profile: Profile }) {
                 className="size-14 rounded-full bg-secondary text-foreground grid place-items-center shrink-0 active:scale-95 transition-transform"
                 aria-label={t("onb_back")}
               >
-                <ChevronLeft className="size-6 rtl:rotate-0 ltr:rotate-180" />
+                <ChevronRight className="size-6 rtl:rotate-0 ltr:rotate-180" />
               </button>
             )}
             {step < 2 ? (

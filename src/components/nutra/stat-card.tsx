@@ -3,6 +3,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { TrendingDown, TrendingUp } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 /** small stat card with label + value + optional delta chip */
 export function StatCard({
@@ -24,6 +25,7 @@ export function StatCard({
   className?: string;
   icon?: React.ReactNode;
 }) {
+  const { nf } = useI18n();
   const showDelta = delta != null && Number.isFinite(delta) && delta !== 0;
   const good = showDelta ? (delta! > 0) !== invertDelta : true;
   return (
@@ -44,7 +46,7 @@ export function StatCard({
           )}
         >
           {delta! > 0 ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
-          {Math.abs(delta!).toLocaleString("en-US", { maximumFractionDigits: 1 })}
+          {nf(Math.abs(delta!), 1)}
         </span>
       )}
     </div>
@@ -67,6 +69,7 @@ export function HeroNumber({
   invertDelta?: boolean;
   className?: string;
 }) {
+  const { nf } = useI18n();
   const showDelta = delta != null && Number.isFinite(delta) && delta !== 0;
   const good = showDelta ? (delta! > 0) !== invertDelta : true;
   return (
@@ -84,7 +87,7 @@ export function HeroNumber({
           )}
         >
           {delta! > 0 ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
-          {Math.abs(delta!).toLocaleString("en-US", { maximumFractionDigits: 1 })}
+          {nf(Math.abs(delta!), 1)}
         </span>
       )}
     </div>

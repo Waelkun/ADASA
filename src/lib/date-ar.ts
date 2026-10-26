@@ -77,3 +77,11 @@ export function shortDateAr(d: Date, withYear = false): string {
 export function weekdayAr(d: Date): string {
   return WEEKDAYS_AR[d.getDay()];
 }
+
+/** Colloquial weekday name for a date (chart tick / calendar header), localized */
+export function formatWeekday(d: Date, lang: "ar" | "en" = "ar"): string {
+  if (lang === "en") {
+    return new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(d);
+  }
+  return WEEKDAYS_AR[d.getDay()];
+}

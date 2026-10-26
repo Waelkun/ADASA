@@ -7,6 +7,7 @@ import { useTheme } from "next-themes";
 import { useI18n } from "@/lib/i18n";
 import { useAppStore } from "@/lib/store";
 import { useToday } from "@/lib/api";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
 import type { PendingFood, ScanResult } from "@/lib/types";
 import { BottomNav } from "@/components/nutra/bottom-nav";
 import { TodayScreen } from "@/components/nutra/screens/today";
@@ -82,17 +83,44 @@ export default function NutraApp() {
       })
   );
 
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") {
+      if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister();
+          }
+        });
+        if ("caches" in window) {
+          caches.keys().then((keys) => {
+            for (const key of keys) {
+              caches.delete(key);
+            }
+          });
+        }
+      }
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell />
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
 
 function BootLoader() {
+  const { t } = useI18n();
   return (
-    <div className="fixed inset-0 z-50 bg-background grid place-items-center">
-      <Loader2 className="size-10 text-primary animate-spin" strokeWidth={2} />
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed inset-0 z-50 bg-background grid place-items-center"
+    >
+      <Loader2 className="size-10 text-primary animate-spin" strokeWidth={2} aria-hidden />
+      <span className="sr-only">{t("loading")}</span>
     </div>
   );
 }
@@ -101,17 +129,17 @@ function AppShell() {
   const { t } = useI18n();
   const { theme, setTheme } = useTheme();
   const tab = useAppStore((s) => s.tab);
+  const lastNavTab = useAppStore((s) => s.lastNavTab);
   const setTab = useAppStore((s) => s.setTab);
   const sheet = useAppStore((s) => s.sheet);
   const closeSheet = useAppStore((s) => s.closeSheet);
   const locked = useAppStore((s) => s.locked);
-  const { data: today, isLoading, isError, refetch } = useToday();
+  const { user, loading: authLoading } = useAuth();
+  const { data: today, isLoading, isError, isFetching, refetch } = useToday(undefined, !!user && !locked);
 
   const [pendingFood, setPendingFood] = useState<PendingFood | null>(null);
 
   // session lock (log out) — persisted in localStorage, hydrated after mount
-  // (async microtask, same pattern as the i18n hydration) so a locked app
-  // never renders any screen — not even a flash — before the session is known
   const [sessionKnown, setSessionKnown] = useState(false);
   useEffect(() => {
     let cancelled = false;
@@ -127,17 +155,47 @@ function AppShell() {
     };
   }, []);
 
-  // cold-start splash: ≥1.6s AND profile readiness (cap 6s), refresh skips it
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setMounted(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // cold-start splash: only shown for authenticated sessions while loading profile
   const [splashOff, setSplashOff] = useState(false);
   const coldStart = useColdStart();
-  const splashReady = !isLoading && !!today?.profile;
-  const splash = coldStart && !splashOff ? (
-    <Splash ready={splashReady} onDone={() => setSplashOff(true)} />
-  ) : null;
+  const splashReady = !authLoading && (!user || (!isLoading && !!today?.profile));
+  const splash =
+    mounted && coldStart && !splashOff && !!user ? (
+      <Splash ready={splashReady} onDone={() => setSplashOff(true)} />
+    ) : null;
 
-  // wait for the session + profile before routing — onboarding decision
-  // (persisted on the profile, so an immediate refresh keeps showing it)
-  if (!sessionKnown || isLoading) {
+  if (!mounted || authLoading || !sessionKnown) {
+    return (
+      <>
+        {splash}
+        <BootLoader />
+      </>
+    );
+  }
+
+  // Not logged in or app explicitly locked: render Auth UI / LockScreen
+  // React Query will NOT fetch /api/today because enabled is false when !user || locked
+  if (!user || locked) {
+    return (
+      <>
+        {splash}
+        <LockScreen name={user?.user_metadata?.full_name || today?.profile?.displayName || ""} />
+      </>
+    );
+  }
+
+  if (isLoading) {
     return (
       <>
         {splash}
@@ -150,14 +208,20 @@ function AppShell() {
   if (isError) {
     return (
       <div className="min-h-dvh bg-background grid place-items-center px-6">
-        <div className="nutra-card p-6 flex flex-col items-center gap-3 text-center max-w-xs">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="nutra-card p-6 flex flex-col items-center gap-3 text-center max-w-xs"
+        >
           <WifiOff className="size-10 text-muted-foreground" />
           <p className="text-sm font-bold">{t("conn_error")}</p>
           <p className="text-xs text-muted-foreground leading-relaxed">{t("conn_error_hint")}</p>
           <button
             onClick={() => refetch()}
-            className="mt-1 h-11 px-6 rounded-full bg-primary text-primary-foreground text-sm font-bold active:scale-95 transition-transform"
+            disabled={isFetching}
+            className="mt-1 h-11 px-6 rounded-full bg-primary text-primary-foreground text-sm font-bold active:scale-95 transition-transform disabled:opacity-60 inline-flex items-center gap-2"
           >
+            {isFetching && <Loader2 className="size-4 animate-spin" />}
             {t("retry")}
           </button>
         </div>
@@ -194,18 +258,24 @@ function AppShell() {
   const greeting =
     hour < 12 ? t("good_morning") : hour < 18 ? t("good_afternoon") : t("good_evening");
 
-  const headerTitle =
-    tab === "today"
-      ? `${greeting} ${today?.profile?.displayName ? "، " + today.profile.displayName : ""} 👋`
-      : tab === "log"
-        ? t("food_log")
-        : tab === "goals"
-          ? t("tab_goals")
-          : tab === "progress"
-            ? t("progress")
-            : tab === "workouts"
-              ? t("workouts")
-              : t("settings");
+  const headerTitle: React.ReactNode =
+    tab === "today" ? (
+      <>
+        {greeting}
+        {today?.profile?.displayName ? "، " + today.profile.displayName : ""}{" "}
+        <bdi>👋</bdi>
+      </>
+    ) : tab === "log" ? (
+      t("food_log")
+    ) : tab === "goals" ? (
+      t("tab_goals")
+    ) : tab === "progress" ? (
+      t("progress")
+    ) : tab === "workouts" ? (
+      t("workouts")
+    ) : (
+      t("settings")
+    );
 
   return (
     <div className="min-h-dvh bg-background flex flex-col">
@@ -215,7 +285,7 @@ function AppShell() {
         <div className="mx-auto max-w-md px-4 h-16 flex items-center gap-2">
           <h1 className="text-base font-bold truncate flex-1">{headerTitle}</h1>
           <button
-            aria-label={t("dark_mode")}
+            aria-label={theme === "dark" ? t("switch_to_light") : t("switch_to_dark")}
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="size-11 grid place-items-center rounded-full hover:bg-secondary transition-colors text-muted-foreground"
           >
@@ -223,7 +293,10 @@ function AppShell() {
           </button>
           <button
             aria-label={t("settings")}
-            onClick={() => setTab(tab === "settings" ? "today" : "settings")}
+            onClick={() => {
+              const returnTab = lastNavTab && lastNavTab !== "settings" ? lastNavTab : "today";
+              setTab(tab === "settings" ? returnTab : "settings");
+            }}
             className="size-11 grid place-items-center rounded-full hover:bg-secondary transition-colors text-muted-foreground data-[active=true]:text-primary data-[active=true]:bg-accent"
             data-active={tab === "settings"}
           >
@@ -233,7 +306,7 @@ function AppShell() {
       </header>
 
       {/* screens */}
-      <main className="flex-1 mx-auto w-full max-w-md px-4 pb-32">
+      <main className="flex-1 mx-auto w-full max-w-md px-4 pb-[var(--dock-clearance)]">
         <div key={tab} className="nutra-anim-in">
           {tab === "today" && <TodayScreen />}
           {tab === "log" && (

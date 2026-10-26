@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { AlertTriangle, Calculator, Check } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useUpdateProfile, useWeight } from "@/lib/api";
-import { ACTIVITY_FACTORS, suggestedMacros, tdee } from "@/lib/nutrition";
+import { ACTIVITY_FACTORS, kgToLb, suggestedMacros, tdee } from "@/lib/nutrition";
 import { NumInput } from "./num-input";
 import { Segmented } from "./segmented";
 import { toast } from "sonner";
@@ -42,6 +42,10 @@ export function CalorieCalculator({ profile }: { profile: ProfileT }) {
 
   const tdeeVal = tdee({ sex, weightKg, heightCm: hN, age: ageN, activityLevel: activity });
   const chosen = RATES.find((r) => r.id === rate) ?? RATES[0];
+  const imperial = profile.units === "imperial";
+  const dispWeight = imperial ? kgToLb(weightKg) : weightKg;
+  const weightUnit = imperial ? t("lb") : t("kg");
+
   const minKcal = sex === "female" ? 1200 : 1500;
   const raw = Math.round(tdeeVal + chosen.kcalAdj);
   const belowMin = raw < minKcal;
@@ -113,7 +117,7 @@ export function CalorieCalculator({ profile }: { profile: ProfileT }) {
         <div className="flex flex-col gap-1.5 min-w-0">
           <span className="text-xs font-semibold text-muted-foreground">{t("weight")}</span>
           <span className="h-11 rounded-2xl bg-secondary/60 grid place-items-center text-sm font-bold tabular text-muted-foreground">
-            {nf(weightKg, 1)} {t("kg")}
+            {nf(dispWeight, 1)} {weightUnit}
           </span>
         </div>
       </div>
@@ -121,17 +125,50 @@ export function CalorieCalculator({ profile }: { profile: ProfileT }) {
       {/* activity */}
       <div className="flex flex-col gap-1.5">
         <span className="text-xs font-semibold text-muted-foreground">{t("activity")}</span>
-        <Segmented
-          value={activity}
-          onChange={setActivity}
-          options={[
-            { value: "sedentary", label: t("act_sedentary") },
-            { value: "light", label: t("act_light") },
-            { value: "moderate", label: t("act_moderate") },
-            { value: "active", label: t("act_active") },
-            { value: "very_active", label: t("act_very") },
-          ]}
-        />
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("activity")}>
+          {(
+            [
+              { value: "sedentary", label: t("act_sedentary") },
+              { value: "light", label: t("act_light") },
+              { value: "moderate", label: t("act_moderate") },
+              { value: "active", label: t("act_active") },
+              { value: "very_active", label: t("act_very") },
+            ] as const
+          ).map((opt, i, arr) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              tabIndex={activity === opt.value ? 0 : -1}
+              aria-checked={activity === opt.value}
+              onClick={() => setActivity(opt.value)}
+              onKeyDown={(e) => {
+                let nextIdx = -1;
+                if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+                  e.preventDefault();
+                  nextIdx = (i + 1) % arr.length;
+                } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+                  e.preventDefault();
+                  nextIdx = (i - 1 + arr.length) % arr.length;
+                }
+                if (nextIdx >= 0) {
+                  setActivity(arr[nextIdx].value);
+                  const container = e.currentTarget.parentElement;
+                  const btn = container?.querySelectorAll<HTMLButtonElement>('button[role="radio"]')[nextIdx];
+                  btn?.focus();
+                }
+              }}
+              className={cn(
+                "h-10 px-3.5 rounded-full text-xs font-bold transition-all active:scale-95",
+                activity === opt.value
+                  ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                  : "bg-secondary text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* goal rate */}
@@ -176,9 +213,9 @@ export function CalorieCalculator({ profile }: { profile: ProfileT }) {
         <button
           onClick={adoptAndSave}
           disabled={update.isPending}
-          className="self-start h-11 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-60"
+          className="self-start h-11 px-5 rounded-full bg-secondary hover:bg-secondary/80 text-foreground border border-border text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-60 shadow-sm"
         >
-          <Check className="size-3.5" />
+          <Calculator className="size-3.5 text-primary" />
           {t("adopt_and_save")}
         </button>
       </div>

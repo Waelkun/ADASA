@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { Camera, Images, Loader2, RefreshCw, ScanLine, AlertTriangle, Wand2 } from "lucide-react";
+import { Camera, Images, Loader2, RefreshCw, ScanLine, AlertTriangle, Wand2, PencilLine } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAppStore } from "@/lib/store";
 import { useScan } from "@/lib/api";
 import type { ScanResult } from "@/lib/types";
 import { SheetShell } from "./sheet-shell";
 
-/** compress an image file client-side: max 1600px, JPEG 0.8 */
-async function compressImage(file: File, maxDim = 1600, quality = 0.8): Promise<string> {
+/** compress an image file client-side: max 1024px, JPEG 0.7 (target < 100 KB) */
+async function compressImage(file: File, maxDim = 1024, quality = 0.7): Promise<string> {
   const bitmap = await createImageBitmap(file);
   try {
     const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
@@ -21,7 +21,12 @@ async function compressImage(file: File, maxDim = 1600, quality = 0.8): Promise<
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("canvas unavailable");
     ctx.drawImage(bitmap, 0, 0, w, h);
-    return canvas.toDataURL("image/jpeg", quality);
+    let dataUrl = canvas.toDataURL("image/jpeg", quality);
+    // If still large (>150,000 characters ~110 KB), reduce quality to stay safely within NVIDIA limits
+    if (dataUrl.length > 150_000) {
+      dataUrl = canvas.toDataURL("image/jpeg", 0.55);
+    }
+    return dataUrl;
   } finally {
     bitmap.close?.();
   }
@@ -35,8 +40,8 @@ function photoTypeOk(file: File): boolean {
   return OK_TYPES.includes(file.type) || (!file.type && OK_EXT.test(file.name));
 }
 
-/** downscale any image source (data URL / URL) to a small square-ish thumbnail: 256px, JPEG 0.7 */
-async function makeThumbnail(src: string, maxDim = 256, quality = 0.7): Promise<string | null> {
+/** downscale any image source (data URL / URL) to a small square-ish thumbnail: 200px, JPEG 0.5 (~15-20 KB) */
+async function makeThumbnail(src: string, maxDim = 200, quality = 0.5): Promise<string | null> {
   try {
     const blob = await (await fetch(src)).blob();
     const bitmap = await createImageBitmap(blob);
@@ -59,7 +64,15 @@ async function makeThumbnail(src: string, maxDim = 256, quality = 0.7): Promise<
   }
 }
 
-type ScanErrorKind = "no_label" | "unparseable" | "vision_failed" | "bad_image" | "bad_type" | "generic";
+type ScanErrorKind =
+  | "no_label"
+  | "unparseable"
+  | "vision_failed"
+  | "bad_image"
+  | "bad_type"
+  | "payload_too_large"
+  | "daily_limit_exceeded"
+  | "generic";
 
 export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: string | null) => void }) {
   const { t } = useI18n();
@@ -71,6 +84,7 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
   const [frontImg, setFrontImg] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [error, setError] = useState<ScanErrorKind | null>(null);
+  const [customErrorMsg, setCustomErrorMsg] = useState<string | null>(null);
   const labelInput = useRef<HTMLInputElement>(null);
   const frontInput = useRef<HTMLInputElement>(null);
   const labelGallery = useRef<HTMLInputElement>(null);
@@ -86,13 +100,16 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
     if (!file) return;
     if (!photoTypeOk(file)) {
       setError("bad_type");
+      setCustomErrorMsg(null);
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
       setError("bad_image");
+      setCustomErrorMsg(null);
       return;
     }
     setError(null);
+    setCustomErrorMsg(null);
     try {
       setter(await compressImage(file));
     } catch {
@@ -103,6 +120,7 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
   const analyze = async () => {
     if (!labelImg) return;
     setError(null);
+    setCustomErrorMsg(null);
     scan.mutate(
       { labelImage: labelImg, frontImage: frontImg ?? undefined, note: note.trim() || undefined },
       {
@@ -113,27 +131,38 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
           setLabelImg(null);
           setFrontImg(null);
           setNote("");
+          setCustomErrorMsg(null);
         },
-        onError: (e: Error & { payload?: { error?: string } }) => {
+        onError: (e: Error & { payload?: { error?: string; message?: string } }) => {
           const code = e.payload?.error;
-          setError(
-            code === "no_label"
-              ? "no_label"
-              : code === "unparseable"
-                ? "no_label"
-                : code === "bad_image"
-                  ? "bad_image"
-                  : code === "vision_failed"
-                    ? "vision_failed"
-                    : "generic"
-          );
+          const msg = e.payload?.message;
+          if (msg) setCustomErrorMsg(msg);
+
+          if (code === "daily_limit_exceeded") {
+            setError("daily_limit_exceeded");
+          } else if (code === "payload_too_large") {
+            setError("payload_too_large");
+          } else if (code === "no_label") {
+            setError("no_label");
+          } else if (code === "bad_image") {
+            setError("bad_image");
+          } else if (code === "vision_failed") {
+            setError("vision_failed");
+          } else {
+            setError("generic");
+          }
         },
       }
     );
   };
 
   const errorText = () => {
+    if (customErrorMsg) return customErrorMsg;
     switch (error) {
+      case "daily_limit_exceeded":
+        return t("scan_error_limit");
+      case "payload_too_large":
+        return t("scan_error_payload");
       case "no_label":
         return t("scan_error_no_label");
       case "bad_type":
@@ -240,13 +269,28 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
           <AlertTriangle className="size-5 text-negative shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-negative">{errorText()}</p>
-            <button
-              onClick={() => analyze()}
-              className="mt-2 nutra-chip bg-negative/15 text-negative gap-1"
-            >
-              <RefreshCw className="size-3" />
-              {t("retry")}
-            </button>
+            {error === "daily_limit_exceeded" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  closeSheet();
+                  openSheet("manual-food");
+                }}
+                className="mt-2.5 h-10 px-4 rounded-full bg-negative/20 text-negative text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-transform"
+              >
+                <PencilLine className="size-3.5" />
+                {t("manual_entry")}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => analyze()}
+                className="mt-2.5 h-10 px-4 rounded-full bg-negative/20 text-negative text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-transform"
+              >
+                <RefreshCw className="size-3.5" />
+                {t("retry")}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -306,7 +350,7 @@ function PhotoSlot({
       <div className="flex items-center gap-1">
         <span className="text-xs font-bold">{title}</span>
         {required && (
-          <span className="size-1.5 rounded-full bg-negative" aria-label="required" />
+          <span className="size-1.5 rounded-full bg-negative" aria-label={t("required")} />
         )}
       </div>
       {img ? (
@@ -316,33 +360,35 @@ function PhotoSlot({
           aria-label={t("retake")}
         >
           <img src={img} alt={title} className="absolute inset-0 size-full object-cover" />
-          <span className="absolute inset-x-0 bottom-0 py-1.5 text-[10px] font-bold text-white bg-black/45 text-center backdrop-blur-sm">
+          <span className="absolute inset-x-0 bottom-0 py-1.5 text-xs font-bold text-white bg-black/45 text-center backdrop-blur-sm leading-normal">
             {t("retake")}
           </span>
         </button>
       ) : (
-        <div className="relative aspect-[3/4] rounded-[20px] border-2 border-dashed border-border bg-secondary/50 flex items-center justify-center px-2">
-          <div className="flex flex-wrap items-center justify-center gap-2">
+        <div className="relative aspect-[3/4] rounded-[20px] border-2 border-dashed border-border bg-secondary/50 flex items-center justify-center p-2">
+          <div className="flex flex-col items-stretch justify-center gap-2 w-full max-w-[128px]">
             <button
+              type="button"
               onClick={onCamera}
               aria-label={t("take_photo")}
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 rounded-full bg-card border border-border text-[11px] font-bold text-foreground shadow-sm active:scale-95 transition-transform"
+              className="min-h-[44px] w-full inline-flex items-center justify-center gap-1.5 px-2 rounded-full bg-card border border-border text-xs font-bold text-foreground shadow-sm active:scale-95 transition-transform"
             >
-              <Camera className="size-4 text-primary" />
-              {t("camera")}
+              <Camera className="size-4 shrink-0 text-primary" />
+              <span>{t("camera")}</span>
             </button>
             <button
+              type="button"
               onClick={onGallery}
               aria-label={t("from_gallery")}
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 rounded-full bg-card border border-border text-[11px] font-bold text-foreground shadow-sm active:scale-95 transition-transform"
+              className="min-h-[44px] w-full inline-flex items-center justify-center gap-1.5 px-2 rounded-full bg-card border border-border text-xs font-bold text-foreground shadow-sm active:scale-95 transition-transform"
             >
-              <Images className="size-4 text-water" />
-              {t("from_gallery")}
+              <Images className="size-4 shrink-0 text-water" />
+              <span className="truncate">{t("from_gallery")}</span>
             </button>
           </div>
         </div>
       )}
-      <span className="text-[10px] text-muted-foreground text-center leading-tight">{hint}</span>
+      <span className="text-xs text-muted-foreground text-center leading-relaxed">{hint}</span>
     </div>
   );
 }

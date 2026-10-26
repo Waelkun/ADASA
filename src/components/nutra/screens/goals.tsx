@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Flame, GlassWater, Dumbbell, Scale, Target, Check } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useToday, useWater, useWeight, useWorkouts, useUpdateProfile, localDayStr } from "@/lib/api";
-import { kgToLb } from "@/lib/nutrition";
+import { kgToLb, lbToKg } from "@/lib/nutrition";
 import { NumInput } from "../num-input";
 import { MacroSplitEditor } from "../macro-split-editor";
 import { CalorieCalculator } from "../calorie-calculator";
@@ -45,7 +45,14 @@ function GoalRow({
           {Math.round(Math.min(pct, 9.99) * 100)}%
         </span>
       </div>
-      <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
+      <div
+        role="progressbar"
+        aria-valuenow={Math.round(pct * 100)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={label}
+        className="h-2.5 rounded-full bg-secondary overflow-hidden"
+      >
         <div
           className={cn("h-full rounded-full transition-all duration-700", barClass)}
           style={{ width: `${Math.min(pct, 1) * 100}%` }}
@@ -77,7 +84,14 @@ export function GoalsScreen() {
     if (today?.profile && !editorsInit) {
       setEditorsInit(true);
       setWaterGoalL(today.profile.waterGoalMl / 1000);
-      setGoalWeight(today.profile.goalWeightKg ?? "");
+      const isImp = today.profile.units === "imperial";
+      const initW =
+        today.profile.goalWeightKg != null
+          ? isImp
+            ? Math.round(kgToLb(today.profile.goalWeightKg) * 10) / 10
+            : today.profile.goalWeightKg
+          : "";
+      setGoalWeight(initW);
       setWorkoutsWk(today.profile.workoutsPerWeek);
     }
   }
@@ -106,16 +120,36 @@ export function GoalsScreen() {
   const fmtW = (kg: number) => nf(imperial ? kgToLb(kg) : kg, 1);
   const wUnit = imperial ? t("lb") : t("kg");
 
+  const currentDispGoal =
+    profile.goalWeightKg != null
+      ? imperial
+        ? Math.round(kgToLb(profile.goalWeightKg) * 10) / 10
+        : profile.goalWeightKg
+      : null;
+
+  const isWeightDirty =
+    goalWeight === ""
+      ? currentDispGoal != null
+      : currentDispGoal == null || Math.abs(Number(goalWeight) - currentDispGoal) > 0.05;
+
   const goalsDirty =
     Math.round((Number(waterGoalL) || 0) * 1000) !== profile.waterGoalMl ||
-    (goalWeight === "" ? profile.goalWeightKg != null : goalWeight !== profile.goalWeightKg) ||
+    isWeightDirty ||
     Number(workoutsWk || 0) !== profile.workoutsPerWeek;
 
-  const saveGoals = () =>
+  const saveGoals = () => {
+    const rawGoal = goalWeight === "" ? null : Number(goalWeight);
+    const goalKg =
+      rawGoal != null
+        ? imperial
+          ? Math.round(lbToKg(rawGoal) * 10) / 10
+          : rawGoal
+        : null;
+
     update.mutate(
       {
         waterGoalMl: Math.round((Number(waterGoalL) || 2.8) * 1000),
-        goalWeightKg: goalWeight === "" ? null : Number(goalWeight),
+        goalWeightKg: goalKg,
         workoutsPerWeek: Number(workoutsWk || 4),
       },
       {
@@ -123,6 +157,7 @@ export function GoalsScreen() {
         onError: () => toast.error(t("error_toast")),
       }
     );
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -202,7 +237,7 @@ export function GoalsScreen() {
                 </span>
               </p>
               {latestW - goalW > 0 && (
-                <p className="text-[11px] font-semibold text-primary tabular">
+                <p className="text-xs font-semibold text-primary tabular leading-normal">
                   {t("goals_left")}: {fmtW(latestW - goalW)} {wUnit}
                 </p>
               )}
@@ -233,12 +268,12 @@ export function GoalsScreen() {
               ariaLabel={t("water_goal")}
               className="w-full h-11 bg-secondary px-3 text-center"
             />
-            <span className="absolute end-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground pointer-events-none">{t("liter")}</span>
+            <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground pointer-events-none">{t("liter")}</span>
           </div>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-semibold">{t("goal_weight")}</span>
-          <div className="relative w-32">
+          <span className="text-sm font-semibold flex-1 min-w-0">{t("goal_weight")}</span>
+          <div className="relative w-32 shrink-0">
             <NumInput
               value={goalWeight}
               onChange={setGoalWeight}
@@ -246,14 +281,15 @@ export function GoalsScreen() {
               max={300}
               decimals={1}
               allowEmpty
+              placeholder={imperial ? "170" : "75"}
               ariaLabel={t("goal_weight")}
-              className="w-full h-11 bg-secondary px-3 text-center"
+              className="w-full h-11 bg-secondary ps-3 pe-8 text-center"
             />
-            <span className="absolute end-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground pointer-events-none">{imperial ? t("lb") : t("kg")}</span>
+            <span className="absolute end-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground pointer-events-none">{imperial ? t("lb") : t("kg")}</span>
           </div>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-semibold">{t("workouts_target")}</span>
+          <span className="text-sm font-semibold flex-1 min-w-0">{t("workouts_target")}</span>
           <NumInput
             value={workoutsWk}
             onChange={setWorkoutsWk}
@@ -261,34 +297,20 @@ export function GoalsScreen() {
             max={7}
             inputMode="numeric"
             ariaLabel={t("workouts_target")}
-            className="w-32 h-11 bg-secondary px-3 text-center"
+            className="w-20 sm:w-28 shrink-0 h-11 bg-secondary px-3 text-center"
           />
         </div>
         <button
-          onClick={() =>
-            update.mutate(
-              {
-                waterGoalMl: Math.round((Number(waterGoalL) || 2.8) * 1000),
-                goalWeightKg: goalWeight === "" ? null : Number(goalWeight),
-                workoutsPerWeek: Number(workoutsWk || 4),
-              },
-              {
-                onSuccess: () => toast.success(t("settings_saved")),
-                onError: () => toast.error(t("error_toast")),
-              }
-            )
-          }
-          disabled={
-            update.isPending ||
-            (Math.round((Number(waterGoalL) || 0) * 1000) === profile.waterGoalMl &&
-              (goalWeight === "" ? profile.goalWeightKg == null : goalWeight === profile.goalWeightKg) &&
-              Number(workoutsWk || 0) === profile.workoutsPerWeek)
-          }
+          onClick={saveGoals}
+          disabled={!goalsDirty || update.isPending}
           className="h-12 rounded-full bg-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform disabled:opacity-40 shadow-lg shadow-primary/25"
         >
           <Check className="size-4" />
-          {t("save")}
+          {t("save_daily_goals")}
         </button>
+        {!goalsDirty && (
+          <p className="text-xs text-muted-foreground text-center mt-1.5">{t("no_changes_to_save")}</p>
+        )}
       </section>
 
       {/* macro split editor (kcal from macros + percent ↔ grams) — base goal */}

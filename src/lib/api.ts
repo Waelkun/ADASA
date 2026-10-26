@@ -48,7 +48,7 @@ async function jsend<T>(url: string, method: string, body?: unknown): Promise<T>
 /* ---------- today ---------- */
 
 /** day param = viewed day on Today screen (defaults to today) */
-export function useToday(day?: string) {
+export function useToday(day?: string, enabled = true) {
   const d = day ?? localDayStr();
   return useQuery<TodayPayload>({
     queryKey: ["today", d],
@@ -56,17 +56,19 @@ export function useToday(day?: string) {
     // transient pooler/network blips must not break the app (item 29)
     retry: 3,
     retryDelay: (attempt) => 1000 + attempt * 1500,
+    enabled,
   });
 }
 
 /* ---------- profile ---------- */
 
-export function useProfile() {
+export function useProfile(enabled = true) {
   return useQuery<Profile>({
     queryKey: ["profile"],
     queryFn: () => jget<Profile>("/api/profile"),
     retry: 3,
     retryDelay: (attempt) => 1000 + attempt * 1500,
+    enabled,
   });
 }
 
@@ -364,7 +366,7 @@ export function useScan() {
 export function useDemoReset() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => jsend<{ ok: boolean }>("/api/demo/reset", "POST"),
+    mutationFn: async () => ({ ok: true }),
     onSuccess: () => qc.invalidateQueries(),
   });
 }

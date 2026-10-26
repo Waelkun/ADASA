@@ -1,12 +1,12 @@
 import { NextRequest } from "next/server";
-import ZAI, { type CreateChatCompletionVisionBody } from "z-ai-web-dev-sdk";
 import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
 import { kcalSanityOk } from "@/lib/nutrition";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 45;
 
-/* ---------- validation ---------- */
+/* ---------- validation schemas ---------- */
 
 const nutrientsSchema = z.object({
   kcal: z.number().nullable().catch(null),
@@ -27,37 +27,21 @@ const scanSchema = z.object({
   estimated_weight_g: z.number().nullable().catch(null),
   per_100g: nutrientsSchema.nullable().catch(null),
   per_serving: nutrientsSchema.nullable().catch(null),
-  confidence: z.number().min(0).max(1).catch(0.5),
+  confidence: z.number().min(0).max(1).catch(0.8),
   notes: z.string().nullable().catch(null),
 });
 
-/* ---------- rate limiting (20 scans/hour) ---------- */
+/* ---------- limits & helpers ---------- */
 
-const rateMap = new Map<string, { count: number; reset: number }>();
-const RATE_LIMIT = 20;
-const RATE_WINDOW_MS = 60 * 60 * 1000;
+// NVIDIA inline base64 images are capped (~180,000 characters / ~130 KB)
+const MAX_IMAGE_CHARS = 180_000;
+const DATA_URL_RE = /^data:image\/(jpe?g|png|webp|heic);base64,/i;
 
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateMap.get(ip);
-  if (!entry || entry.reset < now) {
-    rateMap.set(ip, { count: 1, reset: now + RATE_WINDOW_MS });
-    return false;
-  }
-  entry.count++;
-  return entry.count > RATE_LIMIT;
+function isValidImageDataUrl(v: unknown): v is string {
+  return typeof v === "string" && DATA_URL_RE.test(v);
 }
 
-/* ---------- helpers ---------- */
-
-const DATA_URL_RE = /^data:image\/(png|jpe?g|webp);base64,/;
-const MAX_BYTES = 8 * 1024 * 1024;
-
-function validImage(v: unknown): v is string {
-  return typeof v === "string" && DATA_URL_RE.test(v) && v.length < MAX_BYTES * 1.4;
-}
-
-/** strip markdown fences and extract the outermost JSON object */
+/** strip markdown code fences and extract outermost JSON object */
 function extractJson(text: string): string | null {
   let t = text.trim();
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -68,105 +52,222 @@ function extractJson(text: string): string | null {
   return t.slice(start, end + 1);
 }
 
-const SYSTEM_PROMPT = `You are a precise nutrition analysis engine. You will receive product photos:
-- The FIRST image is the nutrition facts label (back of package): the PRIMARY source of truth for all nutrition values.
-- If a SECOND image is present, it shows the product front: use it ONLY for the product name and brand.
+const SYSTEM_PROMPT = `You are an expert clinical nutrition AI and computer vision analyst. Analyze the provided food image(s):
+- If the image contains a Nutrition Facts label (in Arabic or English):
+  * Extract exact numbers as primary ground truth.
+  * If energy is in kJ only, convert to kcal by dividing by 4.184 (rounded to integer).
+  * Distinguish "per 100g" / "per 100ml" from "per serving" columns.
+- If it is a prepared meal / restaurant dish / mixed plate:
+  * Estimate weight in grams and return in "estimated_weight_g".
+  * Estimate nutrition values PER 100G in "per_100g".
+  * Set "serving_size_g" to null unless distinct pieces are apparent.
+- If a USER HINT is provided, treat it as TRUSTED ground truth: it overrides visual guesses for the name and weights.
 
-Read carefully. Labels may be in Arabic (القيمة الغذائية / معلومات غذائية) or English, or both. Convert kJ to kcal by dividing by 4.184 (round to integer). Distinguish "per 100g" / "per 100ml" columns from "per serving" / "per bar" / "per pack" columns; extract both when both are visible.
-
-PREPARED MEALS: the photo may show a prepared meal/dish (home cooking, restaurant plate, mixed food) instead of a packaged label. In that case:
-- Estimate the nutrition values PER 100G from the visible food (ingredients, cooking method, oils, portion look).
-- Estimate the TOTAL WEIGHT of the visible food in grams and return it in "estimated_weight_g".
-- Put the meal estimates in per_100g; set serving_size_g to null.
-
-USER HINT: the user may provide a short hint (a description and/or a weight). If present, treat it as TRUSTED ground truth: it OVERRIDES your visual estimates for the name and for any weight it mentions (use it for estimated_weight_g / serving_size_g). Never contradict a hinted weight.
-
-STRICT RULES:
-- Return ONLY ONE valid JSON object. No markdown fences, no explanations, no extra keys.
-- NEVER guess or estimate label values that are not clearly visible: use null. (Meal estimates, however, are expected — they are the whole point for dishes.)
-- All numbers must be non-negative. Round grams to 1 decimal max.
-- confidence: 0.9+ only when the label is crisp and fully readable (or the meal is clearly identifiable); 0.5-0.9 when partially readable; below 0.5 when blurry or the label is missing.
-- notes: one short sentence about ambiguities (e.g. "energy in kJ, converted to kcal"), or null.
-
-JSON schema (exact keys):
+CRITICAL: Return ONLY a raw JSON object (no markdown, no backticks, no comments, no extra text) matching this schema:
 {
-  "product_name": string|null,
-  "brand": string|null,
-  "serving_size_g": number|null,
-  "servings_per_container": number|null,
-  "estimated_weight_g": number|null,
-  "per_100g": {"kcal": number|null,"protein_g": number|null,"carbs_g": number|null,"sugar_g": number|null,"fat_g": number|null,"sat_fat_g": number|null,"fiber_g": number|null,"salt_g": number|null},
-  "per_serving": {"kcal": number|null,"protein_g": number|null,"carbs_g": number|null,"sugar_g": number|null,"fat_g": number|null,"sat_fat_g": number|null,"fiber_g": number|null,"salt_g": number|null},
-  "confidence": number,
-  "notes": string|null
+  "product_name": string or null,
+  "brand": string or null,
+  "serving_size_g": number or null,
+  "servings_per_container": number or null,
+  "estimated_weight_g": number or null,
+  "per_100g": {
+    "kcal": number or null,
+    "protein_g": number or null,
+    "carbs_g": number or null,
+    "sugar_g": number or null,
+    "fat_g": number or null,
+    "sat_fat_g": number or null,
+    "fiber_g": number or null,
+    "salt_g": number or null
+  },
+  "per_serving": {
+    "kcal": number or null,
+    "protein_g": number or null,
+    "carbs_g": number or null,
+    "sugar_g": number or null,
+    "fat_g": number or null,
+    "sat_fat_g": number or null,
+    "fiber_g": number or null,
+    "salt_g": number or null
+  },
+  "confidence": number between 0.0 and 1.0,
+  "notes": string or null
 }`;
 
 /* ---------- POST /api/scan ---------- */
 
 export async function POST(req: NextRequest) {
   try {
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      req.headers.get("x-real-ip") ??
-      "local";
-    if (rateLimited(ip)) {
+    // 1. Authenticate user via Supabase session
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return Response.json(
-        { error: "rate_limited", message: "Too many scans this hour" },
+        { error: "unauthorized", message: "يجب تسجيل الدخول لاستخدام ميزة تحليل الطعام." },
+        { status: 401 }
+      );
+    }
+
+    // 2. Check and enforce daily scan limit via public.scan_usage
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const limit = Number(process.env.SCAN_DAILY_LIMIT) || 30;
+
+    const { data: usageRow, error: usageSelectError } = await supabase
+      .from("scan_usage")
+      .select("id, count")
+      .eq("user_id", user.id)
+      .eq("day_date", today)
+      .maybeSingle();
+
+    if (usageSelectError) {
+      console.warn("Scan usage select warning:", usageSelectError.message);
+    }
+
+    const currentCount = usageRow?.count ?? 0;
+    if (currentCount >= limit) {
+      return Response.json(
+        {
+          error: "daily_limit_exceeded",
+          message: `لقد وصلت إلى الحد الأقصى للمسح اليومي (${limit} عملية مسح اليوم). يمكنك المتابعة غداً.`,
+        },
         { status: 429 }
       );
     }
 
+    // 3. Verify NVIDIA configuration
+    const apiKey = process.env.NVIDIA_API_KEY;
+    if (!apiKey) {
+      return Response.json(
+        {
+          error: "server_misconfigured",
+          message: "مفتاح NVIDIA_API_KEY غير مهيأ في الخادم.",
+        },
+        { status: 500 }
+      );
+    }
+    const model = process.env.NVIDIA_MODEL || "meta/llama-3.2-11b-vision-instruct";
+
+    // 4. Validate input payload
     const body = await req.json().catch(() => ({}));
     const labelImage: string | null = body?.labelImage ?? null;
     const frontImage: string | null = body?.frontImage ?? null;
-    // optional user hint (description / weight) — treated as trusted by the model
     const note: string | null =
       typeof body?.note === "string" && body.note.trim()
         ? body.note.trim().slice(0, 500)
         : null;
 
-    if (!validImage(labelImage)) {
+    if (!isValidImageDataUrl(labelImage)) {
       return Response.json(
-        { error: "bad_image", message: "A valid label image (PNG/JPEG/WebP, max 8MB) is required" },
+        {
+          error: "bad_image",
+          message: "صورة غير صالحة. يرجى تزويد صورة بتنسيق مدعوم (JPEG / PNG / WebP).",
+        },
         { status: 400 }
       );
     }
-    const validFront = frontImage && validImage(frontImage) ? frontImage : null;
 
-    const content: Array<
+    // Enforce size limit to protect NVIDIA endpoint (~180k chars)
+    if (labelImage.length > MAX_IMAGE_CHARS) {
+      return Response.json(
+        {
+          error: "payload_too_large",
+          message: "حجم الصورة كبير جداً (أكثر من 100 كيلوبايت). يرجى تقليل حجم الصورة وإعادة المحاولة.",
+        },
+        { status: 413 }
+      );
+    }
+
+    // 5. Build NVIDIA Vision completion payload
+    const userContent: Array<
       | { type: "text"; text: string }
       | { type: "image_url"; image_url: { url: string } }
     > = [{ type: "text", text: SYSTEM_PROMPT }];
+
     if (note) {
-      content.push({
+      userContent.push({
         type: "text",
-        text: `USER HINT (TRUSTED — overrides your visual estimates, especially any mentioned weight): "${note}"`,
+        text: `USER HINT (TRUSTED — overrides visual guesses): "${note}"`,
       });
     }
-    content.push({ type: "image_url", image_url: { url: labelImage } });
-    if (validFront) content.push({ type: "image_url", image_url: { url: validFront } });
 
-    const zai = await ZAI.create();
-    let completion: { choices?: Array<{ message?: { content?: string } }> };
+    userContent.push({
+      type: "image_url",
+      image_url: { url: labelImage },
+    });
+
+    // Only include frontImage if total payload stays within safe limits
+    if (
+      isValidImageDataUrl(frontImage) &&
+      labelImage.length + frontImage.length <= MAX_IMAGE_CHARS
+    ) {
+      userContent.push({
+        type: "image_url",
+        image_url: { url: frontImage },
+      });
+    }
+
+    // 6. Call NVIDIA API with 40s timeout via AbortController
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 40_000);
+
+    let nvidiaRes: globalThis.Response;
     try {
-      // note: the SDK defaults the vision model at runtime; its type just requires the field
-      completion = await zai.chat.completions.createVision({
-        messages: [{ role: "user", content }],
-        thinking: { type: "disabled" },
-      } as CreateChatCompletionVisionBody);
-    } catch (e) {
-      console.error("scan: vision call failed", e);
+      nvidiaRes = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: userContent }],
+          max_tokens: 1024,
+          temperature: 0.2,
+          top_p: 0.7,
+        }),
+        signal: controller.signal,
+      });
+    } catch (fetchErr: any) {
+      clearTimeout(timeout);
+      console.error("NVIDIA API network error:", fetchErr);
       return Response.json(
-        { error: "vision_failed", message: "AI service unavailable" },
+        {
+          error: "vision_failed",
+          message: "تعذر الاتصال بخدمة التحليل الذكي (انتهت مهلة الطلب أو خطأ في الشبكة).",
+        },
+        { status: 502 }
+      );
+    }
+    clearTimeout(timeout);
+
+    if (!nvidiaRes.ok) {
+      const errText = await nvidiaRes.text().catch(() => "");
+      console.error("NVIDIA API response error:", nvidiaRes.status, errText);
+      return Response.json(
+        {
+          error: "vision_failed",
+          message: `خطأ في استجابة خدمة الذكاء الاصطناعي (${nvidiaRes.status}).`,
+        },
         { status: 502 }
       );
     }
 
-    const raw = completion.choices?.[0]?.message?.content ?? "";
-    const jsonStr = extractJson(raw);
+    const nvidiaData = await nvidiaRes.json().catch(() => ({}));
+    const rawContent: string = nvidiaData?.choices?.[0]?.message?.content ?? "";
+
+    // 7. Parse and validate JSON from model response
+    const jsonStr = extractJson(rawContent);
     if (!jsonStr) {
       return Response.json(
-        { error: "unparseable", message: "Could not parse AI response" },
+        {
+          error: "unparseable",
+          message: "تعذر استخراج بيانات غذائية مقروءة من استجابة النموذج.",
+        },
         { status: 422 }
       );
     }
@@ -176,7 +277,10 @@ export async function POST(req: NextRequest) {
       parsedJson = JSON.parse(jsonStr);
     } catch {
       return Response.json(
-        { error: "unparseable", message: "Could not parse AI response" },
+        {
+          error: "unparseable",
+          message: "صيغة بيانات النموذج غير صالحة.",
+        },
         { status: 422 }
       );
     }
@@ -184,23 +288,33 @@ export async function POST(req: NextRequest) {
     const check = scanSchema.safeParse(parsedJson);
     if (!check.success) {
       return Response.json(
-        { error: "unparseable", message: "AI response failed validation" },
+        {
+          error: "unparseable",
+          message: "فشل التحقق من صحة بنية البيانات الغذائية.",
+        },
         { status: 422 }
       );
     }
+
     const result = check.data;
 
-    // did we actually find a label?
-    const has100 = result.per_100g && Object.values(result.per_100g).some((v) => v != null);
-    const hasServing = result.per_serving && Object.values(result.per_serving).some((v) => v != null);
-    if (!has100 && !hasServing) {
+    // Verify whether any nutritional values or food was recognized
+    const has100 =
+      result.per_100g && Object.values(result.per_100g).some((v) => v != null);
+    const hasServing =
+      result.per_serving && Object.values(result.per_serving).some((v) => v != null);
+
+    if (!has100 && !hasServing && !result.product_name) {
       return Response.json(
-        { error: "no_label", message: "No nutrition label found in the photo" },
+        {
+          error: "no_label",
+          message: "لم يتم التعرف على ملصق غذائي أو صنف طعام في الصورة.",
+        },
         { status: 422 }
       );
     }
 
-    // sanity check kcal vs macros (on whichever basis is available)
+    // 8. Sanity check kcal vs macros
     let sanity_ok = true;
     if (result.per_100g?.kcal != null) {
       sanity_ok = kcalSanityOk(
@@ -218,9 +332,52 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return Response.json({ ...result, sanity_ok, source: "ai" });
-  } catch (e) {
-    console.error("scan error", e);
-    return Response.json({ error: "server_error", message: "Scan failed" }, { status: 500 });
+    // 9. Increment daily scan usage in Supabase
+    try {
+      if (!usageRow) {
+        await supabase.from("scan_usage").insert({
+          user_id: user.id,
+          day_date: today,
+          count: 1,
+        });
+      } else {
+        await supabase
+          .from("scan_usage")
+          .update({ count: currentCount + 1 })
+          .eq("id", usageRow.id);
+      }
+    } catch (dbErr) {
+      console.warn("Failed to update scan_usage counter:", dbErr);
+    }
+
+    // 10. Return validated ScanResult
+    return Response.json({
+      product_name: result.product_name || "صنف غذائي",
+      brand: result.brand,
+      serving_size_g: result.serving_size_g,
+      servings_per_container: result.servings_per_container,
+      estimated_weight_g: result.estimated_weight_g,
+      per_100g: result.per_100g ?? {
+        kcal: 0,
+        protein_g: 0,
+        carbs_g: 0,
+        sugar_g: null,
+        fat_g: 0,
+        sat_fat_g: null,
+        fiber_g: null,
+        salt_g: null,
+      },
+      per_serving: result.per_serving,
+      confidence: result.confidence,
+      notes: result.notes,
+      sanity_ok,
+      source: "ai",
+    });
+  } catch (err: any) {
+    console.error("Fatal /api/scan error:", err);
+    return Response.json(
+      { error: "server_error", message: "حدث خطأ غير متوقع أثناء معالجة الصورة." },
+      { status: 500 }
+    );
   }
 }

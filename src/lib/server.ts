@@ -1,13 +1,5 @@
-import { db } from "@/lib/db";
-
-/** Ensure the single demo profile exists and return it */
-export async function getProfile() {
-  let p = await db.profile.findUnique({ where: { id: 1 } });
-  if (!p) {
-    p = await db.profile.create({ data: { id: 1 } });
-  }
-  return p;
-}
+import { mapProfileFromDb } from "./mappers";
+import type { Profile } from "./types";
 
 /** Validate YYYY-MM-DD */
 export function isDayStr(s: unknown): s is string {
@@ -27,18 +19,49 @@ export function jsonError(message: string, status = 400) {
   return Response.json({ error: message }, { status });
 }
 
+/** Ensure profile exists in Supabase and return it in camelCase */
+export async function getUserProfile(supabase: any, userId: string): Promise<Profile> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (data) {
+    return mapProfileFromDb(data);
+  }
+
+  // Fallback: create default profile if trigger hasn't fired yet
+  const { data: created, error: insertError } = await supabase
+    .from("profiles")
+    .upsert({ user_id: userId }, { onConflict: "user_id" })
+    .select()
+    .single();
+
+  if (insertError) {
+    console.error("Failed to ensure profile:", insertError);
+    throw insertError;
+  }
+
+  return mapProfileFromDb(created);
+}
+
 /** streak of consecutive logged days ending today (or yesterday) */
-export async function calcStreak(dayDate: string): Promise<number> {
-  const days = await db.foodLog.findMany({
-    select: { dayDate: true },
-    distinct: ["dayDate"],
-  });
-  const set = new Set(days.map((d) => d.dayDate));
+export async function calcStreak(supabase: any, userId: string, dayDate: string): Promise<number> {
+  const { data } = await supabase
+    .from("food_logs")
+    .select("day_date")
+    .eq("user_id", userId);
+
+  if (!data || data.length === 0) return 0;
+
+  const set = new Set<string>(data.map((r: any) => String(r.day_date)));
   let streak = 0;
   const cursor = new Date(dayDate + "T00:00:00");
   // if today not logged, start from yesterday so streak isn't zeroed mid-day
   if (!set.has(dayDate)) cursor.setDate(cursor.getDate() - 1);
-  for (;;) {
+
+  for (let i = 0; i < 365; i++) {
     const y = cursor.getFullYear();
     const m = String(cursor.getMonth() + 1).padStart(2, "0");
     const d = String(cursor.getDate()).padStart(2, "0");

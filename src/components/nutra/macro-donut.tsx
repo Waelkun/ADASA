@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import { calcDisplayPcts } from "./macro-split-editor";
 
 interface MacroDonutProps {
   protein: number;
@@ -71,7 +72,7 @@ export function MacroDonut({ protein, carbs, fat, size = 150 }: MacroDonutProps)
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="nutra-hero-num text-2xl tabular">{nf(Math.round(total))}</span>
-          <span className="text-[10px] font-medium text-muted-foreground">{t("kcal")}</span>
+          <span className="text-xs font-medium text-muted-foreground">{t("kcal")}</span>
         </div>
       </div>
 
@@ -102,17 +103,28 @@ export function MacroDonut({ protein, carbs, fat, size = 150 }: MacroDonutProps)
 
 /** color-coded segmented horizontal bar (wealth-bar style) */
 export function MacroBar({ protein, carbs, fat }: Omit<MacroDonutProps, "size">) {
+  const { t, nf } = useI18n();
   const pk = protein * 4;
   const ck = carbs * 4;
   const fk = fat * 9;
   const total = pk + ck + fk;
+  const displayPcts = calcDisplayPcts(protein, carbs, fat, 1);
   const items = [
     { k: "p", v: pk, color: "var(--protein)" },
     { k: "c", v: ck, color: "var(--carbs)" },
     { k: "f", v: fk, color: "var(--fat)" },
   ];
+  const ariaLabel =
+    total > 0
+      ? `${t("macros")}: ${t("protein")} ${nf(displayPcts.p, 1)}%, ${t("carbs")} ${nf(displayPcts.c, 1)}%, ${t("fat")} ${nf(displayPcts.f, 1)}%`
+      : t("macros");
+
   return (
-    <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-secondary">
+    <div
+      role="img"
+      aria-label={ariaLabel}
+      className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-secondary"
+    >
       {total > 0 &&
         items.map((it) => (
           <div

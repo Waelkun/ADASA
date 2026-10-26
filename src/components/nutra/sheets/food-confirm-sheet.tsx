@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef } from "react";
 import { AlertTriangle, Check, Sparkles } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAddFoodLog, useCreateFood, localDayStr } from "@/lib/api";
@@ -65,6 +65,8 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
 
   const [name, setName] = useState(food.name ?? "");
   const [brand, setBrand] = useState(food.brand ?? "");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [per100, setPer100] = useState({
     kcal: Math.round(food.kcal100 ?? 0),
     p: food.protein100 ?? 0,
@@ -107,18 +109,25 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
   const showWarning = food.source === "scan" && (lowConfidence || food.sanityOk === false);
 
   const submit = async () => {
+    if (editable && !name.trim()) {
+      setNameError(t("error_food_name_required"));
+      nameInputRef.current?.focus();
+      return;
+    }
     if (!name.trim() || effectiveGrams <= 0) {
       toast.error(t("error_toast"));
       return;
     }
     // entries land on the day being viewed on the Today screen (item: day nav)
     const dayDate = useAppStore.getState().selectedDay ?? localDayStr();
-    let loggedAt: string | undefined;
-    if (dayDate !== localDayStr()) {
+    const now = new Date();
+    let loggedAt: string;
+    if (dayDate === localDayStr()) {
+      loggedAt = now.toISOString();
+    } else {
       // keep intra-day ordering: viewed day + current clock time (local, no tz slip)
       const [y, m, d] = dayDate.split("-").map(Number);
-      const n = new Date();
-      loggedAt = new Date(y, m - 1, d, n.getHours(), n.getMinutes(), n.getSeconds()).toISOString();
+      loggedAt = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
     }
     try {
       let foodId = food.id ?? null;
@@ -177,7 +186,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
                 (food.confidence ?? 1) >= 0.8
                   ? "bg-positive/12 text-positive"
                   : (food.confidence ?? 1) >= 0.5
-                    ? "bg-carbs/12 text-carbs"
+                    ? "bg-carbs/12 text-carbs-text"
                     : "bg-negative/12 text-negative"
               )}
             >
@@ -189,7 +198,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
 
         {showWarning && (
           <div role="alert" className="p-3.5 rounded-[18px] bg-carbs/10 flex items-start gap-2.5 text-start">
-            <AlertTriangle className="size-4.5 text-carbs shrink-0 mt-0.5" />
+            <AlertTriangle className="size-4.5 text-carbs-text shrink-0 mt-0.5" />
             <p className="text-xs font-semibold leading-relaxed">
               {food.sanityOk === false ? t("verify_values") : t("low_confidence")}
             </p>
@@ -201,20 +210,34 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
           <div className="flex items-center gap-3">
             <ProductThumb src={food.imageUrl} name={name} className="size-14 rounded-2xl" />
             {editable ? (
-              <div className="flex-1 min-w-0 flex flex-col gap-2">
+              <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                 <input
+                  ref={nameInputRef}
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (nameError) setNameError(null);
+                  }}
                   placeholder={t("food_name")}
                   aria-label={t("food_name")}
-                  className="w-full h-13 rounded-[18px] bg-secondary px-4 text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  aria-invalid={!!nameError}
+                  aria-describedby={nameError ? "food-name-error" : undefined}
+                  className={cn(
+                    "w-full h-13 rounded-[18px] bg-secondary px-4 text-base font-bold focus:outline-none focus:ring-2",
+                    nameError ? "border border-destructive focus:ring-destructive" : "focus:ring-primary/40"
+                  )}
                 />
+                {nameError && (
+                  <p id="food-name-error" role="alert" className="text-xs text-destructive ps-1">
+                    {nameError}
+                  </p>
+                )}
                 <input
                   value={brand}
                   onChange={(e) => setBrand(e.target.value)}
                   placeholder={t("brand")}
                   aria-label={t("brand")}
-                  className="w-full h-11 rounded-full bg-secondary px-4 text-base font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full h-11 rounded-full bg-secondary px-4 text-base font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 mt-0.5"
                 />
               </div>
             ) : (
@@ -249,7 +272,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
                   ] as const
                 ).map(([key, label]) => (
                   <label key={key} className="flex flex-col gap-1">
-                    <span className="text-[10px] font-semibold text-muted-foreground text-center">
+                    <span className="text-xs font-semibold text-muted-foreground text-center leading-normal">
                       {label}
                     </span>
                     <NumInput
@@ -280,10 +303,10 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
             ).map(([v, label]) => (
               <div key={label} className="rounded-xl bg-secondary py-2.5 flex flex-col items-center">
                 <span className="text-sm font-bold tabular">{v}</span>
-                <span className="text-[9px] font-medium text-muted-foreground">{label}</span>
+                <span className="text-xs font-medium text-muted-foreground leading-normal">{label}</span>
               </div>
             ))}
-            <span className="col-span-4 text-[10px] text-muted-foreground text-center -mt-1">
+            <span className="col-span-4 text-xs text-muted-foreground text-center -mt-1 leading-normal">
               {t("per_100g")}
             </span>
           </div>
@@ -298,7 +321,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
                 : t("quantity")}
             </span>
             {food.source === "scan" && food.estimatedWeightG && food.estimatedWeightG > 0 && (
-              <span className="text-[10px] font-medium text-primary">{t("estimated_weight_hint")}</span>
+              <span className="text-xs font-medium text-primary leading-normal">{t("estimated_weight_hint")}</span>
             )}
             {hasServing && (
               <div className="w-40">
@@ -388,23 +411,23 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
               <span className="nutra-hero-num text-3xl tabular">{nf(totals.kcal)}</span>
               <span className="text-xs font-bold text-muted-foreground">{t("kcal")}</span>
             </div>
-            <span className="text-[11px] font-medium text-muted-foreground">{t("total")}</span>
+            <span className="text-xs font-medium text-muted-foreground leading-normal">{t("total")}</span>
           </div>
           <div className="mt-2.5 grid grid-cols-3 text-center">
             {(
               [
                 [t("protein"), totals.p, "var(--protein)"],
-                [t("carbs"), totals.c, "var(--carbs)"],
+                [t("carbs"), totals.c, "var(--carbs-text)"],
                 [t("fat"), totals.f, "var(--fat)"],
               ] as const
             ).map(([label, v, color]) => (
               <div key={label} className="flex flex-col">
-                <span className="text-[10px] font-semibold" style={{ color }}>
+                <span className="text-xs font-semibold leading-normal" style={{ color }}>
                   {label}
                 </span>
                 <span className="text-base font-bold tabular">
                   {nf(v, 1)}
-                  <span className="text-[9px] text-muted-foreground">{t("grams")}</span>
+                  <span className="text-xs text-muted-foreground">{t("grams")}</span>
                 </span>
               </div>
             ))}
@@ -435,7 +458,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
 
         {/* notes from AI */}
         {food.notes && (
-          <p className="text-[11px] text-muted-foreground text-start leading-relaxed">
+          <p className="text-xs text-muted-foreground text-start leading-relaxed">
             💬 {t("scan_notes")}: {food.notes}
           </p>
         )}

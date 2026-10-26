@@ -15,6 +15,46 @@ type MK = keyof typeof KCAL_G;
 
 const pct1 = (v: number) => Math.round(v * 10) / 10;
 
+/** Largest Remainder Method (Hamilton-Hare) so displayed percentages always total exactly 100 */
+export function calcDisplayPcts(
+  pG: number,
+  cG: number,
+  fG: number,
+  decimals = 1
+): Record<MK, number> {
+  const pKcal = Math.max(0, pG) * KCAL_G.p;
+  const cKcal = Math.max(0, cG) * KCAL_G.c;
+  const fKcal = Math.max(0, fG) * KCAL_G.f;
+  const total = pKcal + cKcal + fKcal;
+  if (total <= 0) {
+    return { p: 0, c: 0, f: 0 };
+  }
+  const factor = 10 ** decimals;
+  const targetSum = 100 * factor;
+  const raw: { k: MK; val: number }[] = [
+    { k: "p", val: (pKcal * targetSum) / total },
+    { k: "c", val: (cKcal * targetSum) / total },
+    { k: "f", val: (fKcal * targetSum) / total },
+  ];
+  const floored = raw.map((item) => ({
+    k: item.k,
+    floor: Math.floor(item.val),
+    rem: item.val - Math.floor(item.val),
+  }));
+  const currentSum = floored.reduce((a, b) => a + b.floor, 0);
+  const diff = targetSum - currentSum;
+  // sort by remainder descending
+  const sorted = [...floored].sort((a, b) => b.rem - a.rem);
+  for (let i = 0; i < diff; i++) {
+    sorted[i % sorted.length].floor += 1;
+  }
+  const res: Record<MK, number> = { p: 0, c: 0, f: 0 };
+  for (const item of floored) {
+    res[item.k] = item.floor / factor;
+  }
+  return res;
+}
+
 /**
  * Macro split editor (items: kcal-from-macros + percentages ↔ grams):
  * - غرامات mode: free gram inputs; kcal & percentages derive from them
@@ -47,6 +87,8 @@ export function MacroSplitEditor({
     kcalFromMacros > 0 ? pct1((KCAL_G[k] * grams[k] * 100) / kcalFromMacros) : 0;
   const pcts = { p: pctOf("p"), c: pctOf("c"), f: pctOf("f") };
   const pctSum = pct1(pcts.p + pcts.c + pcts.f);
+  const displayPcts = calcDisplayPcts(grams.p, grams.c, grams.f, 1);
+  const dispP = mode === "grams" ? displayPcts : pcts;
 
   /** grams for a macro from its percentage of a fixed kcal target */
   const gramsFromPct = (k: MK, pct: number, kcalTarget: number) =>
@@ -87,21 +129,29 @@ export function MacroSplitEditor({
   };
 
   const dirty =
-    grams.p !== proteinG || grams.c !== carbsG || grams.f !== fatG || kcal !== kcalGoal;
+    grams.p !== proteinG ||
+    grams.c !== carbsG ||
+    grams.f !== fatG ||
+    (mode === "grams" ? kcalFromMacros !== kcalGoal : kcal !== kcalGoal);
 
-  const save = () =>
+  const save = () => {
+    const finalKcal = mode === "grams" ? kcalFromMacros : Math.round(kcal);
     update.mutate(
       {
-        kcalGoal: Math.round(kcal),
+        kcalGoal: finalKcal,
         proteinG: Math.round(grams.p),
         carbsG: Math.round(grams.c),
         fatG: Math.round(grams.f),
       },
       {
-        onSuccess: () => toast.success(t("settings_saved")),
+        onSuccess: () => {
+          setKcal(finalKcal);
+          toast.success(t("settings_saved"));
+        },
         onError: () => toast.error(t("error_toast")),
       }
     );
+  };
 
   const rows: { k: MK; label: string; color: string }[] = [
     { k: "p", label: t("protein"), color: "var(--protein)" },
@@ -142,7 +192,7 @@ export function MacroSplitEditor({
         ) : (
           <span className="text-sm font-bold tabular">
             {nf(kcalFromMacros)} {t("kcal")}
-            <span className="text-[10px] font-medium text-muted-foreground block text-center">
+            <span className="text-xs font-medium text-muted-foreground block text-center leading-normal">
               {t("kcal_from_macros")}
             </span>
           </span>
@@ -152,33 +202,38 @@ export function MacroSplitEditor({
       {/* rows */}
       <div className="flex flex-col gap-2.5">
         {rows.map(({ k, label, color }) => (
-          <div key={k} className="flex items-center gap-3">
+          <div key={k} className="flex items-center gap-2 sm:gap-3 min-w-0">
             <span className="size-2.5 rounded-full shrink-0" style={{ background: color }} />
-            <span className="text-sm font-semibold w-24 shrink-0 truncate">{label}</span>
-            {mode === "grams" ? (
-              <NumInput
-                value={Math.round(grams[k])}
-                onChange={(v) =>
-                  setGrams((g) => ({ ...g, [k]: typeof v === "number" ? v : g[k] }))
-                }
-                min={0}
-                max={800}
-                ariaLabel={label}
-                className="flex-1 h-11 bg-secondary px-3 text-center"
-              />
-            ) : (
-              <NumInput
-                value={pcts[k]}
-                onChange={(v) => setPct(k, typeof v === "number" ? v : 0)}
-                min={0}
-                max={100}
-                decimals={1}
-                ariaLabel={label}
-                className="flex-1 h-11 bg-secondary px-3 text-center"
-              />
-            )}
-            <span className="text-[10px] font-bold text-muted-foreground w-14 text-end tabular">
-              {mode === "grams" ? `${pcts[k]}%` : `${nf(grams[k])}${t("grams")}`}
+            <span className="text-sm font-semibold w-20 sm:w-24 shrink-0 truncate">{label}</span>
+            <div className="relative flex-1 min-w-0 flex items-center">
+              {mode === "grams" ? (
+                <NumInput
+                  value={Math.round(grams[k])}
+                  onChange={(v) =>
+                    setGrams((g) => ({ ...g, [k]: typeof v === "number" ? v : g[k] }))
+                  }
+                  min={0}
+                  max={800}
+                  ariaLabel={label}
+                  className="w-full min-w-0 h-11 bg-secondary ps-3 pe-7 text-center"
+                />
+              ) : (
+                <NumInput
+                  value={pcts[k]}
+                  onChange={(v) => setPct(k, typeof v === "number" ? v : 0)}
+                  min={0}
+                  max={100}
+                  decimals={1}
+                  ariaLabel={label}
+                  className="w-full min-w-0 h-11 bg-secondary ps-3 pe-7 text-center"
+                />
+              )}
+              <span className="absolute end-2.5 text-xs font-bold text-muted-foreground pointer-events-none select-none">
+                {mode === "grams" ? "غ" : "%"}
+              </span>
+            </div>
+            <span className="text-xs font-bold text-muted-foreground w-12 sm:w-14 shrink-0 text-end tabular">
+              {mode === "grams" ? `${nf(displayPcts[k], 1)}%` : `${nf(grams[k])}${t("grams")}`}
             </span>
           </div>
         ))}
@@ -186,20 +241,28 @@ export function MacroSplitEditor({
 
       {/* sum lock (percent mode) + kcal-from-macros readout */}
       <div className="flex items-center justify-between gap-2">
-        <button
-          role="switch"
-          aria-checked={lock}
-          aria-label={t("lock_kcal")}
-          onClick={() => setLock((s) => !s)}
-          disabled={mode !== "percent"}
-          className={cn(
-            "flex items-center gap-2 min-h-[40px] px-3 rounded-full text-xs font-bold transition-colors",
-            mode === "percent" ? "bg-secondary text-foreground" : "opacity-40"
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={lock}
+            aria-label={t("lock_kcal")}
+            onClick={() => setLock((s) => !s)}
+            disabled={mode !== "percent"}
+            className={cn(
+              "flex items-center gap-2 min-h-[44px] px-3.5 rounded-full text-xs font-bold transition-colors",
+              mode === "percent" ? "bg-secondary text-foreground" : "opacity-40"
+            )}
+          >
+            {lock ? <Lock className="size-3.5 text-primary" /> : <Unlock className="size-3.5" />}
+            {t("lock_kcal")}
+          </button>
+          {mode === "grams" && (
+            <span className="text-xs text-muted-foreground leading-normal">
+              ({t("lock_only_in_percent_mode")})
+            </span>
           )}
-        >
-          {lock ? <Lock className="size-3.5 text-primary" /> : <Unlock className="size-3.5" />}
-          {t("lock_kcal")}
-        </button>
+        </div>
         {mode === "percent" && (
           <span
             className={cn(
@@ -211,13 +274,19 @@ export function MacroSplitEditor({
           </span>
         )}
       </div>
-      {/* kcal-from-macros readout (protein×4 + carbs×4 + fat×9) */}
-      <p className="text-[11px] text-muted-foreground leading-relaxed text-center">
-        {t("kcal_from_macros")} ({t("kcal_formula")}):{" "}
+      {/* kcal-from-macros readout */}
+      <p className="text-xs text-muted-foreground leading-relaxed text-center">
+        <span>{t("kcal_from_macros")}</span>{" "}
+        <bdi className="font-medium">({t("kcal_formula")})</bdi>:{" "}
         <span className="font-bold text-foreground tabular">{nf(kcalFromMacros)} {t("kcal")}</span>
-        {" · "}{t("protein")} {nf(pcts.p)}% · {t("carbs")} {nf(pcts.c)}% · {t("fat")} {nf(pcts.f)}%
+        <span className="mx-1.5 opacity-60">·</span>
+        <span>{t("protein")} <bdi className="tabular">{nf(dispP.p, 1)}%</bdi></span>
+        <span className="mx-1.5 opacity-60">·</span>
+        <span>{t("carbs")} <bdi className="tabular">{nf(dispP.c, 1)}%</bdi></span>
+        <span className="mx-1.5 opacity-60">·</span>
+        <span>{t("fat")} <bdi className="tabular">{nf(dispP.f, 1)}%</bdi></span>
       </p>
-      <p className="text-[11px] text-muted-foreground leading-relaxed text-center">
+      <p className="text-xs text-muted-foreground leading-relaxed text-center">
         {t("macro_editor_hint")}
       </p>
 
@@ -227,8 +296,11 @@ export function MacroSplitEditor({
         className="h-12 rounded-full bg-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform disabled:opacity-40 shadow-lg shadow-primary/25"
       >
         <Check className="size-4" />
-        {t("save")}
+        {t("save_macro_split")}
       </button>
+      {!dirty && (
+        <p className="text-xs text-muted-foreground text-center mt-1.5">{t("no_changes_to_save")}</p>
+      )}
     </section>
   );
 }

@@ -1,15 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef } from "react";
 import { ScanLine, PencilLine, GlassWater, Scale, Dumbbell, UtensilsCrossed } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAppStore } from "@/lib/store";
 import { SheetShell } from "./sheet-shell";
 import { useAddWater, useUndoWater, useWater, useLogWeight, useWeight, useToday } from "@/lib/api";
 import { localDayStr } from "@/lib/api";
-import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { kgToLb, lbToKg } from "@/lib/nutrition";
 
 /* ================= Quick add menu ================= */
 
@@ -39,7 +39,7 @@ export function QuickAddSheet() {
       icon: PencilLine,
       label: t("manual_entry"),
       hint: t("manual_hint"),
-      color: "text-carbs bg-carbs/12",
+      color: "text-carbs-text bg-carbs/12",
       onClick: () => openSheet("manual-food"),
     },
     {
@@ -77,7 +77,7 @@ export function QuickAddSheet() {
               <span className="flex-1 min-w-0">
                 <span className="block text-sm font-bold">{it.label}</span>
                 {it.hint && (
-                  <span className="block text-[11px] text-muted-foreground truncate">{it.hint}</span>
+                  <span className="block text-xs text-muted-foreground truncate leading-normal">{it.hint}</span>
                 )}
               </span>
             </button>
@@ -100,13 +100,15 @@ export function WaterSheet() {
   const { t, nf } = useI18n();
   const sheet = useAppStore((s) => s.sheet);
   const closeSheet = useAppStore((s) => s.closeSheet);
-  const { data: water } = useWater();
+  const selectedDay = useAppStore((s) => s.selectedDay);
+  const { data: water } = useWater(selectedDay ?? undefined);
+  const { data: today } = useToday(selectedDay ?? undefined);
   const addWater = useAddWater();
   const undoWater = useUndoWater();
   const [custom, setCustom] = useState("");
 
   const total = water?.total ?? 0;
-  const goal = 2800; // profile goal comes via today; fallback here is fine
+  const goal = today?.profile?.waterGoalMl ?? 2800;
   const lastId = water?.entries?.[water.entries.length - 1]?.id;
 
   const add = (ml: number) =>
@@ -118,7 +120,7 @@ export function WaterSheet() {
   return (
     <SheetShell open={sheet === "water"} onOpenChange={(o) => !o && closeSheet()} title={t("add_water")}>
       <p className="text-center text-sm text-muted-foreground mb-4 tabular">
-        {nf(total / 1000, 2)} {t("liter")}
+        {nf(total / 1000, 2)} / {nf(goal / 1000, 1)} {t("liter")}
       </p>
       <div className="grid grid-cols-4 gap-2 mb-4">
         {[250, 500, 750, 1000].map((ml) => (
@@ -214,21 +216,40 @@ function WeightForm({
       : 80;
 
   const [date, setDate] = useState<"today" | "yesterday">("today");
-  const [value, setValue] = useState(existing != null ? String(existing) : "");
+  const initialValue =
+    existing != null
+      ? imperial
+        ? String(Math.round(kgToLb(existing) * 10) / 10)
+        : String(existing)
+      : "";
+  const [value, setValue] = useState(initialValue);
   const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const displayed = imperial ? "lb" : "kg";
+  const displayed = imperial ? t("lb") : t("kg");
+  const minVal = imperial ? 55 : 25;
+  const maxVal = imperial ? 770 : 350;
+  const dispLast =
+    lastWeight != null
+      ? imperial
+        ? Math.round(kgToLb(lastWeight) * 10) / 10
+        : lastWeight
+      : null;
 
   const save = () => {
-    const kg = Number(value);
-    if (!Number.isFinite(kg) || kg < 25 || kg > 350) {
-      toast.error(t("error_toast"));
+    const rawVal = Number(value);
+    const kg = imperial ? lbToKg(rawVal) : rawVal;
+    if (!value.trim() || !Number.isFinite(kg) || kg < 25 || kg > 350) {
+      setError(t("error_weight_range"));
+      inputRef.current?.focus();
       return;
     }
+    const roundedKg = Math.round(kg * 10) / 10;
     logWeight.mutate(
       {
         date: date === "today" ? todayStr : yesterdayStr,
-        weightKg: kg,
+        weightKg: roundedKg,
         note: note.trim() || undefined,
       },
       {
@@ -270,18 +291,36 @@ function WeightForm({
         </span>
         <div className="flex items-baseline gap-2">
           <input
+            ref={inputRef}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              setValue(e.target.value);
+              if (error) setError(null);
+            }}
             inputMode="decimal"
-            placeholder={String(lastWeight ?? 80)}
+            placeholder={String(dispLast ?? (imperial ? 175 : 80))}
             aria-label={t("today_weight")}
-            className="w-36 text-center nutra-hero-num text-5xl tabular bg-transparent focus:outline-none placeholder:text-muted-foreground/40"
+            aria-invalid={!!error}
+            aria-describedby={error ? "weight-error" : undefined}
+            className={cn(
+              "w-36 text-center nutra-hero-num text-5xl tabular bg-transparent focus-visible:ring-2 rounded-xl placeholder:text-muted-foreground/40",
+              error ? "focus-visible:ring-destructive border-b-2 border-destructive" : "focus-visible:ring-primary/40"
+            )}
           />
           <span className="text-sm font-bold text-muted-foreground">{displayed}</span>
         </div>
-        {lastWeight != null && (
-          <span className="text-[11px] text-muted-foreground tabular">
-            {t("yesterday")}: {nf(lastWeight, 1)} {t("kg")}
+        {error ? (
+          <p id="weight-error" role="alert" className="text-xs text-destructive font-medium">
+            {error}
+          </p>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {t("weight_range_hint")}: {minVal}–{maxVal} {displayed}
+          </span>
+        )}
+        {dispLast != null && (
+          <span className="text-xs text-muted-foreground tabular leading-normal">
+            {t("yesterday")}: {nf(dispLast, 1)} {displayed}
           </span>
         )}
       </div>
@@ -301,7 +340,7 @@ function WeightForm({
       >
         {t("save")}
       </button>
-      <p className="text-center text-[11px] text-muted-foreground mt-3">{df(new Date())}</p>
+      <p className="text-center text-xs text-muted-foreground mt-3 leading-normal">{df(new Date())}</p>
     </div>
   );
 }

@@ -2,10 +2,12 @@
 
 import React, { useState } from "react";
 import { useTheme } from "next-themes";
-import { RotateCcw, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
-import { useProfile, useUpdateProfile, useDemoReset } from "@/lib/api";
+import { useProfile, useUpdateProfile } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth-context";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -42,7 +44,8 @@ function SettingsForm({ profile }: { profile: Profile }) {
   const { t, lang, setLang } = useI18n();
   const { theme, setTheme } = useTheme();
   const update = useUpdateProfile();
-  const resetDemo = useDemoReset();
+  const { user, signOut } = useAuth();
+  const qc = useQueryClient();
   const lockApp = useAppStore((s) => s.lockApp);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
@@ -59,6 +62,36 @@ function SettingsForm({ profile }: { profile: Profile }) {
 
   return (
     <div className="flex flex-col gap-4 pb-4">
+      {/* user account */}
+      {user && (
+        <section className="nutra-card p-4 flex items-center gap-3">
+          <div className="size-11 rounded-full bg-primary/10 text-primary grid place-items-center font-bold text-sm overflow-hidden shrink-0">
+            {user.user_metadata?.avatar_url ? (
+              <img
+                src={user.user_metadata.avatar_url}
+                alt=""
+                className="size-11 rounded-full object-cover"
+              />
+            ) : (
+              (user.email?.charAt(0) || "👤").toUpperCase()
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold truncate">
+              {profile.displayName || user.user_metadata?.full_name || "مستخدم عدسة"}
+            </p>
+            <p className="text-xs text-muted-foreground truncate" dir="ltr">
+              {user.email}
+            </p>
+          </div>
+          {user.app_metadata?.provider === "google" && (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-secondary text-foreground flex items-center gap-1.5 border border-border/50">
+              Google
+            </span>
+          )}
+        </section>
+      )}
+
       {/* preferences */}
       <section className="nutra-card p-5 flex flex-col gap-4">
         <h2 className="text-sm font-bold">{t("preferences")}</h2>
@@ -84,14 +117,17 @@ function SettingsForm({ profile }: { profile: Profile }) {
             ]}
           />
         </div>
-        <label className="flex items-center justify-between py-1">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={theme === "dark"}
+          aria-label={t("dark_mode")}
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="w-full flex items-center justify-between py-1 min-h-[44px] text-start cursor-pointer group"
+        >
           <span className="text-sm font-semibold">{t("dark_mode")}</span>
-          <button
-            role="switch"
-            aria-checked={theme === "dark"}
-            aria-label={t("dark_mode")}
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className={`relative h-8 w-14 rounded-full transition-colors ${
+          <span
+            className={`relative inline-block h-8 w-14 rounded-full transition-colors pointer-events-none ${
               theme === "dark" ? "bg-primary" : "bg-secondary"
             }`}
           >
@@ -100,25 +136,7 @@ function SettingsForm({ profile }: { profile: Profile }) {
                 theme === "dark" ? "start-7" : "start-1"
               }`}
             />
-          </button>
-        </label>
-      </section>
-
-      {/* demo reset */}
-      <section className="nutra-card p-5 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold">{t("data_reset")}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{t("data_reset_hint")}</p>
-        </div>
-        <button
-          onClick={() =>
-            resetDemo.mutate(undefined, { onSuccess: () => toast.success(t("data_reset_done")) })
-          }
-          disabled={resetDemo.isPending}
-          className="size-11 shrink-0 grid place-items-center rounded-full bg-secondary hover:bg-negative/10 hover:text-negative transition-colors disabled:opacity-50"
-          aria-label={t("data_reset")}
-        >
-          <RotateCcw className={`size-5 ${resetDemo.isPending ? "animate-spin" : ""}`} />
+          </span>
         </button>
       </section>
 
@@ -140,7 +158,7 @@ function SettingsForm({ profile }: { profile: Profile }) {
       <button
         onClick={save}
         disabled={update.isPending}
-        className="h-14 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.97] transition-transform disabled:opacity-60 shadow-lg shadow-primary/25 sticky bottom-24"
+        className="h-14 rounded-full bg-primary text-primary-foreground font-bold text-sm active:scale-[0.97] transition-transform disabled:opacity-60 shadow-lg shadow-primary/25 sticky bottom-[var(--dock-sticky)]"
       >
         {update.isPending ? "…" : t("save")}
       </button>
@@ -153,18 +171,23 @@ function SettingsForm({ profile }: { profile: Profile }) {
             <AlertDialogDescription>{t("logout_desc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row gap-2 sm:justify-center">
-            <AlertDialogAction className="h-12 px-6 rounded-full bg-primary text-primary-foreground font-bold">
-              {t("cancel")}
-            </AlertDialogAction>
             <AlertDialogCancel
-              onClick={() => {
+              autoFocus
+              className="h-12 px-6 rounded-full bg-secondary text-foreground font-bold border-none mt-0 hover:bg-secondary/80"
+            >
+              {t("cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
                 setConfirmLogout(false);
+                await signOut();
+                qc.clear();
                 lockApp();
               }}
-              className="h-12 px-6 rounded-full bg-secondary text-negative font-bold border-none mt-0"
+              className="h-12 px-6 rounded-full bg-destructive text-destructive-foreground font-bold hover:bg-destructive/90"
             >
               {t("logout")}
-            </AlertDialogCancel>
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

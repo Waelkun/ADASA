@@ -275,7 +275,7 @@ export function MealBuilderSheet() {
             </button>
             <button
               onClick={() => openSheet("manual-food")}
-              className="flex-1 h-10 rounded-full bg-carbs/10 text-carbs text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+              className="flex-1 h-10 rounded-full bg-carbs/10 text-carbs-text text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
             >
               <PencilLine className="size-4" />
               {t("manual_entry")}
@@ -300,7 +300,7 @@ export function MealBuilderSheet() {
                   <ProductThumb src={f.imageUrl} name={f.name} />
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-semibold truncate">{f.name}</span>
-                    <span className="block text-[11px] text-muted-foreground truncate">
+                    <span className="block text-xs text-muted-foreground truncate leading-normal">
                       {f.brand ? `${f.brand} · ` : ""}
                       <span className="tabular">
                         {nf(f.kcal100)} {t("kcal")}/{t("per_100g")}
@@ -338,7 +338,7 @@ export function MealBuilderSheet() {
                       <ProductThumb src={it.imageUrl} name={it.name} className="size-10" />
                       <span className="flex-1 min-w-0">
                         <span className="block text-[13px] font-semibold truncate">{it.name}</span>
-                        <span className="block text-[10px] text-muted-foreground tabular">
+                        <span className="block text-xs text-muted-foreground tabular leading-normal">
                           {t("protein")} {nf(Math.round((it.p100 * (Number(it.grams) || 0)) / 10) / 10, 1)} · {t("carbs")} {nf(Math.round((it.c100 * (Number(it.grams) || 0)) / 10) / 10, 1)} · {t("fat")} {nf(Math.round((it.f100 * (Number(it.grams) || 0)) / 10) / 10, 1)}
                         </span>
                       </span>
@@ -367,7 +367,7 @@ export function MealBuilderSheet() {
                         onClick={() =>
                           setItems((prev) => prev.filter((p) => p.key !== it.key))
                         }
-                        className="size-9 grid place-items-center rounded-full text-muted-foreground hover:text-negative hover:bg-negative/10 transition-colors"
+                        className="size-11 grid place-items-center rounded-full text-muted-foreground hover:text-negative hover:bg-negative/10 transition-colors active:scale-95 ms-1"
                       >
                         <X className="size-4" />
                       </button>
@@ -376,7 +376,7 @@ export function MealBuilderSheet() {
                 })}
               </div>
               {/* macros summary */}
-              <div className="grid grid-cols-3 text-center px-1 pt-1 text-[10px] font-semibold text-muted-foreground tabular">
+              <div className="grid grid-cols-3 text-center px-1 pt-1 text-xs font-semibold text-muted-foreground tabular leading-normal">
                 <span>{t("protein")} {nf(totals.p, 1)}{t("grams")}</span>
                 <span>{t("carbs")} {nf(totals.c, 1)}{t("grams")}</span>
                 <span>{t("fat")} {nf(totals.f, 1)}{t("grams")}</span>
@@ -416,18 +416,18 @@ export function MealBuilderSheet() {
             <AlertDialogDescription>{t("discard_meal_desc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row gap-2 sm:justify-center">
-            <AlertDialogAction
-              onClick={() => setConfirmDiscard(false)}
-              className="h-12 px-6 rounded-full bg-primary text-primary-foreground font-bold"
+            <AlertDialogCancel
+              autoFocus
+              className="h-12 px-6 rounded-full bg-secondary text-foreground font-bold border-none mt-0 hover:bg-secondary/80"
             >
               {t("keep_editing")}
-            </AlertDialogAction>
-            <AlertDialogCancel
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={discard}
-              className="h-12 px-6 rounded-full bg-secondary text-negative font-bold border-none mt-0"
+              className="h-12 px-6 rounded-full bg-destructive text-destructive-foreground font-bold hover:bg-destructive/90"
             >
               {t("discard")}
-            </AlertDialogCancel>
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

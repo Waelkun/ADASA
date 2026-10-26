@@ -1,21 +1,42 @@
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
+import { jsonError } from "@/lib/server";
+import { mapFoodFromDb } from "@/lib/mappers";
 
 /** PATCH /api/foods/:id — toggle favorite / edit basic fields */
 export async function PATCH(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getAuthUser();
+  if (!user) return jsonError("Unauthorized", 401);
+
   const { id } = await params;
+
   try {
-    const body = await _req.json();
-    const food = await db.food.update({
-      where: { id },
-      data: { isFavorite: !!body.isFavorite },
-    });
-    return Response.json(food);
-  } catch {
-    return Response.json({ error: "not found" }, { status: 404 });
+    const body = await req.json();
+    const supabase = await createClient();
+
+    const updates: Record<string, any> = {};
+    if (typeof body.isFavorite === "boolean") {
+      updates.is_favorite = body.isFavorite;
+    }
+
+    const { data, error } = await supabase
+      .from("foods")
+      .update(updates)
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      return jsonError("not found", 404);
+    }
+
+    return Response.json(mapFoodFromDb(data));
+  } catch (e) {
+    return jsonError("invalid payload", 400);
   }
 }
 
@@ -24,11 +45,21 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getAuthUser();
+  if (!user) return jsonError("Unauthorized", 401);
+
   const { id } = await params;
-  try {
-    await db.food.delete({ where: { id } });
-    return Response.json({ ok: true });
-  } catch {
-    return Response.json({ error: "not found" }, { status: 404 });
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("foods")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) {
+    return jsonError("not found", 404);
   }
+
+  return Response.json({ ok: true });
 }

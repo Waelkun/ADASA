@@ -17,6 +17,7 @@ import {
 import { TrendingDown, TrendingUp, Scale, Flame, GlassWater } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useProgress, localDayStr } from "@/lib/api";
+import { useAppStore } from "@/lib/store";
 import { Segmented } from "../segmented";
 import { HeroNumber, StatCard } from "../stat-card";
 import { MacroBar } from "../macro-donut";
@@ -28,6 +29,7 @@ const RANGE_DAYS: Record<Exclude<Range, "custom">, number> = { "1w": 7, "1m": 30
 
 export function ProgressScreen() {
   const { t, nf, df } = useI18n();
+  const openSheet = useAppStore((s) => s.openSheet);
   const [range, setRange] = useState<Range>("1m");
   // custom period (from → to), defaults to the last 30 days
   const [custom, setCustom] = useState<{ from: string; to: string }>(() => {
@@ -208,6 +210,13 @@ export function ProgressScreen() {
         <Scale className="size-10 text-muted-foreground" />
         <p className="text-sm font-bold">{t("no_weight_yet")}</p>
         <p className="text-xs text-muted-foreground">{t("log_first_weight")}</p>
+        <button
+          onClick={() => openSheet("weight")}
+          className="mt-2 h-11 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center gap-2 active:scale-95 transition-transform shadow-md shadow-primary/25"
+        >
+          <Scale className="size-4" />
+          {t("log_first_weight_cta")}
+        </button>
       </div>
     );
   }
@@ -243,7 +252,7 @@ export function ProgressScreen() {
         <section className="nutra-card p-4 flex flex-col gap-3" aria-label={t("range_custom")}>
           <div className="flex items-end gap-2">
             <label className="flex-1 flex flex-col gap-1 min-w-0">
-              <span className="text-[10px] font-bold text-muted-foreground">{t("date_from")}</span>
+              <span className="text-xs font-bold text-muted-foreground leading-normal">{t("date_from")}</span>
               <input
                 type="date"
                 value={custom.from}
@@ -254,7 +263,7 @@ export function ProgressScreen() {
               />
             </label>
             <label className="flex-1 flex flex-col gap-1 min-w-0">
-              <span className="text-[10px] font-bold text-muted-foreground">{t("date_to")}</span>
+              <span className="text-xs font-bold text-muted-foreground leading-normal">{t("date_to")}</span>
               <input
                 type="date"
                 value={custom.to}
@@ -297,7 +306,12 @@ export function ProgressScreen() {
 
       {/* weight chart */}
       <section className="nutra-card p-4 pt-5" aria-label={t("weight")}>
-        <div className="h-[240px]" dir="ltr">
+        <div
+          className="h-[240px]"
+          dir="ltr"
+          role="img"
+          aria-label={`${t("weight")} — ${stats.avgW != null ? fmtW(stats.avgW) : ""} ${unit}`}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={series} margin={{ top: 6, right: 8, left: -14, bottom: 0 }}>
               <defs>
@@ -309,7 +323,7 @@ export function ProgressScreen() {
               <CartesianGrid stroke="var(--border)" strokeDasharray="3 6" vertical={false} />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 10, fill: "var(--muted-foreground)", fontWeight: 500 }}
+                tick={{ fontSize: 12, fill: "var(--muted-foreground)", fontWeight: 500 }}
                 tickFormatter={(v: string) =>
                   v.slice(8) + "/" + v.slice(5, 7)
                 }
@@ -319,7 +333,7 @@ export function ProgressScreen() {
               />
               <YAxis
                 domain={["dataMin - 0.8", "dataMax + 0.8"]}
-                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
                 axisLine={false}
                 tickLine={false}
                 width={44}
@@ -363,11 +377,11 @@ export function ProgressScreen() {
           </ResponsiveContainer>
         </div>
         <div className="flex items-center gap-4 px-2 pt-1">
-          <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground leading-normal">
             <span className="h-0.5 w-4 rounded bg-primary" aria-hidden />
             {t("weight")}
           </span>
-          <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground leading-normal">
             <span className="h-0.5 w-4 rounded bg-carbs" style={{ backgroundImage: "repeating-linear-gradient(90deg, var(--carbs) 0 4px, transparent 4px 7px)" }} aria-hidden />
             {t("moving_avg7")}
           </span>
@@ -428,7 +442,7 @@ export function ProgressScreen() {
               {nf(stats.avgKcal)} / {nf(kcalGoal)} {t("kcal")}
             </span>
             {stats.trend.kcal != null && stats.trend.kcal !== 0 && (
-              <span className="flex items-center gap-1 text-[10px] font-bold tabular text-muted-foreground">
+              <span className="flex items-center gap-1 text-xs font-bold tabular text-muted-foreground leading-normal">
                 {stats.trend.kcal > 0 ? <TrendingUp className="size-3 text-negative" /> : <TrendingDown className="size-3 text-positive" />}
                 <span className={stats.trend.kcal > 0 ? "text-negative" : "text-positive"}>
                   {stats.trend.kcal > 0 ? "+" : ""}{nf(stats.trend.kcal)}
@@ -438,13 +452,18 @@ export function ProgressScreen() {
             )}
           </div>
         </div>
-        <div className="h-[150px] mt-3" dir="ltr">
+        <div
+          className="h-[150px] mt-3"
+          dir="ltr"
+          role="img"
+          aria-label={`${t("avg_kcal")} — ${nf(stats.avgKcal)} ${t("kcal")}`}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={kcalWeek} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="var(--border)" strokeDasharray="3 6" vertical={false} />
               <XAxis
                 dataKey="day"
-                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -485,17 +504,17 @@ export function ProgressScreen() {
             {(
               [
                 ["protein", stats.macroAvg.protein, "var(--protein)"],
-                ["carbs", stats.macroAvg.carbs, "var(--carbs)"],
+                ["carbs", stats.macroAvg.carbs, "var(--carbs-text)"],
                 ["fat", stats.macroAvg.fat, "var(--fat)"],
               ] as const
             ).map(([key, v, color]) => (
               <div key={key} className="flex flex-col gap-0.5">
-                <span className="text-[11px] font-medium" style={{ color }}>
+                <span className="text-xs font-medium leading-normal" style={{ color }}>
                   {t(key as "protein")}
                 </span>
                 <span className="text-base font-bold tabular">
                   {nf(v, 1)}
-                  <span className="text-[10px] text-muted-foreground">{t("grams")}</span>
+                  <span className="text-xs text-muted-foreground">{t("grams")}</span>
                 </span>
               </div>
             ))}
@@ -513,7 +532,7 @@ export function ProgressScreen() {
               <span className="text-xs font-semibold text-muted-foreground"> {t("liter")}</span>
             </p>
             {stats.trend.water != null && stats.trend.water !== 0 && (
-              <p className="text-[10px] font-bold tabular text-muted-foreground mt-0.5 flex items-center gap-1">
+              <p className="text-xs font-bold tabular text-muted-foreground mt-0.5 flex items-center gap-1 leading-normal">
                 {stats.trend.water > 0 ? <TrendingUp className="size-3 text-water" /> : <TrendingDown className="size-3 text-water" />}
                 <span>{stats.trend.water > 0 ? "+" : ""}{nf(stats.trend.water / 1000, 1)} {t("liter")}</span>
                 {t("vs_prev_period")}

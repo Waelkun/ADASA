@@ -39,6 +39,8 @@ function haptic(ms = 10) {
  * - press & drag: bubble follows the finger (setPointerCapture + touch-action:none),
  *   the page switches live, and it snaps to the nearest tab on release (vibrate(10))
  */
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
+
 export function BottomNav() {
   const { t, isRTL } = useI18n();
   const tab = useAppStore((s) => s.tab);
@@ -78,7 +80,7 @@ export function BottomNav() {
 
   // (re)measure on first render, on every tab/language switch, and on any
   // element resize (window rotate, font swap, capsule width change)
-  React.useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     measure();
     const cap = capsuleRef.current;
     if (!cap || typeof ResizeObserver === "undefined") return;
@@ -178,7 +180,7 @@ export function BottomNav() {
 
   return (
     <nav aria-label="Main navigation" className="fixed bottom-0 inset-x-0 z-40">
-      <div className="mx-auto max-w-md px-4 pb-[max(env(safe-area-inset-bottom),14px)]">
+      <div className="mx-auto max-w-md px-3 sm:px-4 pb-[var(--dock-bottom-offset)]">
         {/* centered group: glass capsule + separate + button (8px gap, same height) */}
         <div className="flex items-center gap-2">
           <div
@@ -189,12 +191,12 @@ export function BottomNav() {
             onPointerCancel={endPointer}
             onLostPointerCapture={endPointer}
             style={{ touchAction: "none" }}
-            className="relative flex-1 min-w-0 h-16 rounded-full bg-card/70 backdrop-blur-[20px] backdrop-saturate-[1.8] border border-border shadow-[0_10px_32px_rgba(16,24,40,0.14)] overflow-hidden"
+            className="relative flex-1 min-w-0 h-14 rounded-full bg-card/70 backdrop-blur-[20px] backdrop-saturate-[1.8] border border-border shadow-[0_10px_32px_rgba(16,24,40,0.14)] overflow-hidden"
           >
             {/* sliding active bubble (spring) — physical x, explicit left:0 anchor */}
             <span
               aria-hidden
-              className="absolute top-2 bottom-2 left-0 rounded-full bg-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_8px_rgba(16,24,40,0.08)]"
+              className="absolute top-1.5 bottom-1.5 left-0 rounded-full bg-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_8px_rgba(16,24,40,0.08)]"
               style={{
                 width: `${bubble.w}px`,
                 zIndex: 0,
@@ -224,12 +226,12 @@ export function BottomNav() {
                     }}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "relative z-[1] flex-1 min-w-0 min-h-[44px] my-1 flex flex-col items-center justify-center gap-1 rounded-full transition-colors",
+                      "relative z-[1] flex-1 min-w-0 min-h-[44px] my-0.5 flex flex-col items-center justify-center gap-0.5 rounded-full transition-colors",
                       active ? "text-accent-foreground" : "text-muted-foreground"
                     )}
                   >
-                    <tb.icon className="size-[21px]" strokeWidth={active ? 2.4 : 2} />
-                    <span className="text-[10px] font-bold leading-none">{t(tb.key)}</span>
+                    <tb.icon className="size-[20px]" strokeWidth={active ? 2.4 : 2} />
+                    <span className="text-[11px] font-bold leading-tight truncate px-0.5">{t(tb.key)}</span>
                   </button>
                 );
               })}
@@ -240,9 +242,9 @@ export function BottomNav() {
           <button
             onClick={() => openSheet("quick-add")}
             aria-label={t("quick_add")}
-            className="size-16 shrink-0 rounded-full bg-primary/95 backdrop-blur-[20px] backdrop-saturate-[1.8] text-primary-foreground border border-white/25 shadow-[0_10px_28px_rgba(16,185,129,0.4)] grid place-items-center active:scale-95 transition-transform"
+            className="size-14 shrink-0 rounded-full bg-primary/95 backdrop-blur-[20px] backdrop-saturate-[1.8] text-primary-foreground border border-white/25 shadow-[0_10px_28px_rgba(16,185,129,0.4)] grid place-items-center active:scale-95 transition-transform"
           >
-            <Plus className="size-7" strokeWidth={2.5} />
+            <Plus className="size-6" strokeWidth={2.5} />
           </button>
         </div>
       </div>

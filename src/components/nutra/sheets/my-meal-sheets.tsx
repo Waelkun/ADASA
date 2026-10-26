@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { BookmarkPlus, Check } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAppStore } from "@/lib/store";
@@ -51,11 +51,18 @@ export function SaveMealSheet({
   const { t, nf } = useI18n();
   const createMeal = useCreateMeal();
   const [name, setName] = useState(defaultName);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   // re-seed the name when a different group opens (keyed remount by caller)
   const kcal = items.reduce((a, l) => a + l.kcal, 0);
 
   const save = () => {
-    if (!name.trim() || items.length === 0) {
+    if (!name.trim()) {
+      setNameError(t("error_meal_name_required"));
+      nameInputRef.current?.focus();
+      return;
+    }
+    if (items.length === 0) {
       toast.error(t("error_toast"));
       return;
     }
@@ -74,16 +81,33 @@ export function SaveMealSheet({
   return (
     <SheetShell open={open} onOpenChange={(o) => !o && onClose()} title={t("save_as_meal")}>
       <div className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-muted-foreground">{t("meal_name_ph")}</span>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="save-meal-name" className="text-xs font-semibold text-muted-foreground">
+            {t("meal_name_ph")}
+          </label>
           <input
+            id="save-meal-name"
+            ref={nameInputRef}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (nameError) setNameError(null);
+            }}
             maxLength={60}
             aria-label={t("meal_name_ph")}
-            className="h-12 rounded-2xl bg-secondary px-4 text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary/40"
+            aria-invalid={!!nameError}
+            aria-describedby={nameError ? "save-meal-error" : undefined}
+            className={cn(
+              "h-12 rounded-2xl bg-secondary px-4 text-base font-bold focus:outline-none focus:ring-2",
+              nameError ? "border border-destructive focus:ring-destructive" : "focus:ring-primary/40"
+            )}
           />
-        </label>
+          {nameError && (
+            <p id="save-meal-error" role="alert" className="text-xs text-destructive ps-1">
+              {nameError}
+            </p>
+          )}
+        </div>
 
         <ul className="flex flex-col gap-1.5 max-h-[28vh] overflow-y-auto nutra-scroll">
           {items.map((l) => (
@@ -253,14 +277,34 @@ export function AddMealSheet({
 
           {/* meal type */}
           <div>
-            <span className="text-xs font-semibold text-muted-foreground mb-2 block">{t("meal")}</span>
-            <div className="grid grid-cols-4 gap-2">
+            <span id="meal-type-label" className="text-xs font-semibold text-muted-foreground mb-2 block">{t("meal")}</span>
+            <div
+              role="radiogroup"
+              aria-labelledby="meal-type-label"
+              className="grid grid-cols-4 gap-2"
+              onKeyDown={(e) => {
+                const idx = MEAL_TYPES.indexOf(mealType);
+                if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+                  e.preventDefault();
+                  const next = MEAL_TYPES[(idx + 1) % MEAL_TYPES.length];
+                  setMealType(next);
+                } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+                  e.preventDefault();
+                  const prev = MEAL_TYPES[(idx - 1 + MEAL_TYPES.length) % MEAL_TYPES.length];
+                  setMealType(prev);
+                }
+              }}
+            >
               {MEAL_TYPES.map((m) => (
                 <button
                   key={m}
+                  type="button"
+                  role="radio"
+                  aria-checked={mealType === m}
+                  tabIndex={mealType === m ? 0 : -1}
                   onClick={() => setMealType(m)}
                   className={cn(
-                    "h-11 rounded-[18px] text-xs font-bold transition-all active:scale-95",
+                    "h-11 rounded-[18px] text-xs font-bold transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none",
                     mealType === m
                       ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
                       : "bg-secondary text-muted-foreground"
@@ -311,7 +355,7 @@ export function MyMealsBar({ onPick }: { onPick: (m: SavedMeal) => void }) {
                 </span>
                 <span className="text-[13px] font-bold truncate flex-1">{m.name}</span>
               </span>
-              <span className="text-[11px] text-muted-foreground tabular">
+              <span className="text-xs text-muted-foreground tabular leading-normal">
                 {nf(m.items.length)} {t("items_count")} · {nf(kcal)} {t("kcal")}
               </span>
             </button>

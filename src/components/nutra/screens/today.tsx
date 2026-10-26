@@ -103,7 +103,7 @@ export function TodayScreen() {
               {df(viewDate)}
             </span>
             {!isToday && (
-              <span className="text-[10px] font-bold text-primary flex items-center gap-0.5">
+              <span className="text-xs font-bold text-primary flex items-center gap-0.5 leading-normal">
                 <Undo2 className="size-3" />
                 {t("today_log")}
               </span>
@@ -135,7 +135,7 @@ export function TodayScreen() {
         )}
         <div className="mt-5 w-full">
           <MacroBar protein={totals.protein} carbs={totals.carbs} fat={totals.fat} />
-          <div className="mt-2 grid grid-cols-3 text-center text-[11px] font-medium text-muted-foreground">
+          <div className="mt-2 grid grid-cols-3 text-center text-xs font-medium text-muted-foreground leading-normal">
             <span>{t("protein")} {nf(totals.protein, 1)}{t("grams")}</span>
             <span>{t("carbs")} {nf(totals.carbs, 1)}{t("grams")}</span>
             <span>{t("fat")} {nf(totals.fat, 1)}{t("grams")}</span>
@@ -187,13 +187,20 @@ export function TodayScreen() {
             {t("water")}
           </h2>
           <span className="text-xs font-semibold tabular text-muted-foreground">
-            {(waterTotal / 1000).toLocaleString("en-US", { maximumFractionDigits: 2 })} /{" "}
-            {(waterGoal / 1000).toLocaleString("en-US", { maximumFractionDigits: 1 })} {t("liter")}
+            {nf(waterTotal / 1000, 2)} / {nf(waterGoal / 1000, 1)} {t("liter")}
           </span>
         </div>
         <div className="flex items-center gap-4">
           {/* mini water ring */}
-          <div className="relative size-20 shrink-0">
+          <div
+            role="progressbar"
+            aria-valuenow={Math.round(waterPct * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuetext={`${nf(waterTotal / 1000, 2)} ${t("of")} ${nf(waterGoal / 1000, 1)} ${t("liter")}`}
+            aria-label={t("water")}
+            className="relative size-20 shrink-0"
+          >
             <svg viewBox="0 0 80 80" className="-rotate-90 size-20">
               <circle cx="40" cy="40" r="32" fill="none" strokeWidth="9" className="stroke-secondary" />
               <circle
@@ -217,7 +224,7 @@ export function TodayScreen() {
             {[
               { ml: 250, label: "+250" },
               { ml: 500, label: "+500" },
-              { ml: 1000, label: "+1L" },
+              { ml: 1000, label: `+1 ${t("liter")}` },
             ].map((b) => (
               <button
                 key={b.ml}
@@ -280,23 +287,23 @@ export function TodayScreen() {
                     <span aria-hidden>{MEAL_ICON[g.meal]}</span>
                     {t(g.meal as "breakfast")}
                   </span>
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1.5">
                     <span className="text-xs font-semibold tabular text-muted-foreground">
                       {nf(g.kcal)} {t("kcal")}
                     </span>
                     <button
                       aria-label={`${t("save_as_meal")} — ${t(g.meal as "breakfast")}`}
                       onClick={() => setSavingGroup({ meal: g.meal, items: g.items })}
-                      className="size-9 grid place-items-center rounded-full text-primary hover:bg-accent transition-colors active:scale-95"
+                      className="size-11 grid place-items-center rounded-full text-primary hover:bg-accent transition-colors active:scale-95"
                     >
-                      <BookmarkPlus className="size-4" />
+                      <BookmarkPlus className="size-4.5" />
                     </button>
                     <button
                       aria-label={`${t("add_food")} — ${t(g.meal as "breakfast")}`}
                       onClick={() => openSheet("meal-builder", { mealType: g.meal })}
-                      className="size-9 grid place-items-center rounded-full text-primary hover:bg-accent transition-colors active:scale-95"
+                      className="size-11 grid place-items-center rounded-full text-primary hover:bg-accent transition-colors active:scale-95"
                     >
-                      <Plus className="size-4" />
+                      <Plus className="size-4.5" />
                     </button>
                   </span>
                 </div>
@@ -329,9 +336,9 @@ export function TodayScreen() {
                         <button
                           aria-label={`${t("edit_amount")} ${l.name}`}
                           onClick={() => setEditingLog(l)}
-                          className="size-9 grid place-items-center rounded-full text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+                          className="size-11 grid place-items-center rounded-full text-muted-foreground hover:text-primary hover:bg-accent transition-colors active:scale-95 ms-1"
                         >
-                          <Pencil className="size-4" />
+                          <Pencil className="size-4.5" />
                         </button>
                       )}
                       <button
@@ -368,9 +375,9 @@ export function TodayScreen() {
                             onError: () => toast.error(t("error_toast")),
                           })
                         }
-                        className="size-9 grid place-items-center rounded-full text-muted-foreground hover:text-negative hover:bg-negative/10 transition-colors"
+                        className="size-11 grid place-items-center rounded-full text-muted-foreground hover:text-negative hover:bg-negative/10 transition-colors active:scale-95 ms-0.5"
                       >
-                        <Trash2 className="size-4" />
+                        <Trash2 className="size-4.5" />
                       </button>
                     </li>
                   ))}

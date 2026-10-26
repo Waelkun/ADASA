@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 const SPLASH_KEY = "nutra-splash-v1";
 const MIN_MS = 1600;
@@ -8,20 +8,26 @@ const MAX_MS = 6000;
 
 type Phase = "iris" | "click" | "flash" | "morph" | "hold" | "out";
 
-const subscribeNoop = () => () => {};
 /** true only on a cold start (refresh within the tab session skips the splash) */
 export function useColdStart() {
-  return useSyncExternalStore(
-    subscribeNoop,
-    () => {
+  const [cold, setCold] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
       try {
-        return !sessionStorage.getItem(SPLASH_KEY);
+        setCold(!sessionStorage.getItem(SPLASH_KEY));
       } catch {
-        return true;
+        setCold(true);
       }
-    },
-    () => true
-  );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return cold;
 }
 
 /**

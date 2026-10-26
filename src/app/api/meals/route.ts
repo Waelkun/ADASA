@@ -1,24 +1,41 @@
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
+import { jsonError } from "@/lib/server";
+import { mapSavedMealFromDb } from "@/lib/mappers";
 
 /**
  * GET /api/meals — saved meals ("وجباتي"), newest first
  * POST /api/meals — save a meal snapshot {name, items[]}
  */
 export async function GET() {
-  const meals = await db.savedMeal.findMany({ orderBy: { createdAt: "desc" } });
-  return Response.json(
-    meals.map((m) => ({ id: m.id, name: m.name, items: JSON.parse(m.items), createdAt: m.createdAt.toISOString() }))
-  );
+  const user = await getAuthUser();
+  if (!user) return jsonError("Unauthorized", 401);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("saved_meals")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("meals GET error:", error);
+    return jsonError("Failed to fetch meals", 500);
+  }
+
+  return Response.json((data || []).map(mapSavedMealFromDb));
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getAuthUser();
+  if (!user) return jsonError("Unauthorized", 401);
+
   try {
     const b = await req.json();
     const name = typeof b?.name === "string" && b.name.trim() ? b.name.trim().slice(0, 60) : "";
-    if (!name) return Response.json({ error: "name required" }, { status: 400 });
+    if (!name) return jsonError("name required", 400);
     if (!Array.isArray(b?.items) || b.items.length === 0 || b.items.length > 50) {
-      return Response.json({ error: "items required (1-50)" }, { status: 400 });
+      return jsonError("items required (1-50)", 400);
     }
     const num = (v: unknown) => {
       const n = Number(v);
@@ -32,7 +49,7 @@ export async function POST(req: NextRequest) {
       typeof v === "string" && v.startsWith("data:image/") && v.length < 400_000;
     const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");
 
-    // snapshot each item exactly as logged (grams + totals + per-100g + thumb)
+    // snapshot each item exactly as logged
     const items = b.items.map((it: Record<string, unknown>) => ({
       foodId: typeof it?.foodId === "string" && it.foodId ? it.foodId : null,
       name: str(it?.name, 80) || "—",
@@ -47,15 +64,26 @@ export async function POST(req: NextRequest) {
       fat100: numOrNull(it?.fat100),
       imageUrl: imgOk(it?.imageUrl) ? it.imageUrl : null,
     }));
-    const meal = await db.savedMeal.create({
-      data: { name, items: JSON.stringify(items) },
-    });
-    return Response.json(
-      { id: meal.id, name: meal.name, items, createdAt: meal.createdAt.toISOString() },
-      { status: 201 }
-    );
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("saved_meals")
+      .insert({
+        user_id: user.id,
+        name,
+        items,
+      })
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error("meals POST error:", error);
+      return jsonError("Failed to save meal", 500);
+    }
+
+    return Response.json(mapSavedMealFromDb(data), { status: 201 });
   } catch (e) {
-    console.error("meals POST", e);
-    return Response.json({ error: "invalid payload" }, { status: 400 });
+    console.error("meals POST error:", e);
+    return jsonError("invalid payload", 400);
   }
 }

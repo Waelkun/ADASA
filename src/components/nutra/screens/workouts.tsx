@@ -14,10 +14,21 @@ const GROUP_COLORS: Record<string, string> = {
   back: "#10b981",
   arms: "#f59e0b",
   legs: "#14b8a6",
-  abs: "#8b5cf6",
+  abs: "#7c3aed",
   shoulders: "#ec4899",
   cardio: "#06b6d4",
   other: "#94a3b8",
+};
+
+const GROUP_TEXT_COLORS: Record<string, string> = {
+  chest: "#0b1210",
+  back: "#0b1210",
+  arms: "#0b1210",
+  legs: "#0b1210",
+  abs: "#ffffff",
+  shoulders: "#0b1210",
+  cardio: "#0b1210",
+  other: "#0b1210",
 };
 
 const GROUP_LABEL_KEYS: Record<string, string> = {
@@ -33,6 +44,10 @@ const GROUP_LABEL_KEYS: Record<string, string> = {
 
 export function groupColor(g: string) {
   return GROUP_COLORS[g] ?? "#94a3b8";
+}
+
+export function groupTextColor(g: string) {
+  return GROUP_TEXT_COLORS[g] ?? "#0b1210";
 }
 
 export function groupLabelKey(g: string): string {
@@ -127,7 +142,7 @@ export function WorkoutsScreen() {
           ))}
         </div>
         <div className="mt-3 flex items-center gap-4">
-          <span className="nutra-chip bg-carbs/12 text-carbs gap-1">
+          <span className="nutra-chip bg-carbs/12 text-carbs-text gap-1">
             <Flame className="size-3.5" />
             {nf(stats?.streak ?? 0)} {t("streak_days")}
           </span>
@@ -144,17 +159,17 @@ export function WorkoutsScreen() {
       <section className="nutra-card p-4" aria-label={t("workout_calendar")}>
         <div className="flex items-center justify-between mb-3">
           <button
-            aria-label="previous month"
+            aria-label={t("prev_month")}
             onClick={() => move(-1)}
-            className="size-10 grid place-items-center rounded-full hover:bg-secondary transition-colors"
+            className="size-11 grid place-items-center rounded-full hover:bg-secondary transition-colors"
           >
             <ChevronRight className="size-5 rtl:rotate-0 ltr:rotate-180" />
           </button>
           <h3 className="text-sm font-bold">{monthLabel}</h3>
           <button
-            aria-label="next month"
+            aria-label={t("next_month")}
             onClick={() => move(1)}
-            className="size-10 grid place-items-center rounded-full hover:bg-secondary transition-colors"
+            className="size-11 grid place-items-center rounded-full hover:bg-secondary transition-colors"
           >
             <ChevronLeft className="size-5 rtl:rotate-0 ltr:rotate-180" />
           </button>
@@ -162,7 +177,7 @@ export function WorkoutsScreen() {
 
         <div className="grid grid-cols-7 gap-1 mb-1">
           {dayNames.map((d, i) => (
-            <span key={i} className="text-center text-[10px] font-semibold text-muted-foreground py-1">
+            <span key={i} className="text-center text-xs font-semibold text-muted-foreground py-1 leading-normal">
               {d}
             </span>
           ))}
@@ -187,7 +202,7 @@ export function WorkoutsScreen() {
                   disabled={isFuture}
                   aria-label={`${date}${groups ? ` — ${t("workouts")}` : ""}`}
                   className={cn(
-                    "relative aspect-square rounded-2xl grid place-items-center text-sm font-semibold tabular min-h-[36px] transition-all",
+                    "relative aspect-square rounded-2xl grid place-items-center text-sm font-semibold tabular min-h-[44px] transition-all",
                     groups
                       ? "bg-primary/12 text-primary"
                       : "text-foreground/80 hover:bg-secondary",
@@ -236,7 +251,7 @@ export function WorkoutsScreen() {
                   />
                 </div>
                 <span className="text-xs font-bold tabular w-5 text-end">{nf(count)}</span>
-                <span className="text-[10px] text-muted-foreground w-14 text-end shrink-0 truncate">
+                <span className="text-xs text-muted-foreground w-16 text-end shrink-0 truncate leading-normal">
                   {last
                     ? df(new Date(last + "T00:00:00"), { day: "numeric", month: "numeric" })
                     : t("never")}
