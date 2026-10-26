@@ -29,7 +29,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 
 # مفتاح ونموذج الذكاء الاصطناعي من NVIDIA (استدعاء من السيرفر فقط)
 NVIDIA_API_KEY=your-nvidia-api-key
-NVIDIA_MODEL=meta/llama-3.2-11b-vision-instruct
+NVIDIA_MODEL=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
 
 # الحد الأقصى اليومي للمسح الذكي لكل مستخدم (افتراضياً 30)
 SCAN_DAILY_LIMIT=30

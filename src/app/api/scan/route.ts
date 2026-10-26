@@ -44,6 +44,8 @@ function isValidImageDataUrl(v: unknown): v is string {
 /** strip markdown code fences and extract outermost JSON object */
 function extractJson(text: string): string | null {
   let t = text.trim();
+  // Strip reasoning/think tags if present (common in reasoning models)
+  t = t.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fence) t = fence[1].trim();
   const start = t.indexOf("{");
@@ -149,7 +151,7 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-    const model = process.env.NVIDIA_MODEL || "meta/llama-3.2-11b-vision-instruct";
+    const model = process.env.NVIDIA_MODEL || "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
 
     // 4. Validate input payload
     const body = await req.json().catch(() => ({}));
@@ -210,48 +212,76 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 6. Call NVIDIA API with 40s timeout via AbortController
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 40_000);
-
-    let nvidiaRes: globalThis.Response;
-    try {
-      nvidiaRes = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: "user", content: userContent }],
-          max_tokens: 1024,
-          temperature: 0.2,
-          top_p: 0.7,
-        }),
-        signal: controller.signal,
-      });
-    } catch (fetchErr: any) {
-      clearTimeout(timeout);
-      console.error("NVIDIA API network error:", fetchErr);
-      return Response.json(
-        {
-          error: "vision_failed",
-          message: "تعذر الاتصال بخدمة التحليل الذكي (انتهت مهلة الطلب أو خطأ في الشبكة).",
-        },
-        { status: 502 }
-      );
+    // 6. Call NVIDIA API with 40s timeout via AbortController + retry on 503
+    const requestPayload: Record<string, any> = {
+      model,
+      messages: [{ role: "user", content: userContent }],
+      max_tokens: 4096,
+      temperature: 0.6,
+      top_p: 0.95,
+    };
+    if (model.includes("reasoning")) {
+      requestPayload.reasoning_budget = 2048;
     }
-    clearTimeout(timeout);
 
-    if (!nvidiaRes.ok) {
-      const errText = await nvidiaRes.text().catch(() => "");
-      console.error("NVIDIA API response error:", nvidiaRes.status, errText);
+    let nvidiaRes: globalThis.Response | null = null;
+    let lastErrorText = "";
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 35_000);
+
+      try {
+        const res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(requestPayload),
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+
+        if (res.ok) {
+          nvidiaRes = res;
+          break;
+        }
+
+        lastErrorText = await res.text().catch(() => "");
+        console.warn(`NVIDIA API attempt ${attempt} returned ${res.status}:`, lastErrorText);
+
+        if ((res.status === 503 || res.status === 429) && attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          continue;
+        }
+
+        nvidiaRes = res;
+        break;
+      } catch (fetchErr: any) {
+        clearTimeout(timeout);
+        console.error(`NVIDIA API network error on attempt ${attempt}:`, fetchErr);
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          continue;
+        }
+        return Response.json(
+          {
+            error: "vision_failed",
+            message: "تعذر الاتصال بخدمة التحليل الذكي (انتهت مهلة الطلب أو خطأ في الشبكة).",
+          },
+          { status: 502 }
+        );
+      }
+    }
+
+    if (!nvidiaRes || !nvidiaRes.ok) {
+      console.error("NVIDIA API response error:", nvidiaRes?.status, lastErrorText);
       return Response.json(
         {
           error: "vision_failed",
-          message: `خطأ في استجابة خدمة الذكاء الاصطناعي (${nvidiaRes.status}).`,
+          message: `خطأ في استجابة خدمة الذكاء الاصطناعي (${nvidiaRes?.status ?? 502}).`,
         },
         { status: 502 }
       );
