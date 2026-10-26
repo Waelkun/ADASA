@@ -135,7 +135,7 @@ export function LogScreen({ onPickFood }: { onPickFood: (f: PendingFood) => void
           )}
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
           {foods.map((f) => (
             <FoodRow
               key={f.id}

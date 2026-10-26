@@ -55,7 +55,7 @@ export function dfAr(d: Date, opts: DateArOpts = {}): string {
   else if (month !== false) core = monthName;
   else core = "";
   let s = "";
-  if (weekday) s += `${WEEKDAYS_AR[d.getDay()]}، `;
+  if (weekday) s += core ? `${WEEKDAYS_AR[d.getDay()]}، ` : `${WEEKDAYS_AR[d.getDay()]}`;
   if (core) s += core + (year ? " " : "");
   if (year) s += String(d.getFullYear());
   return s.trim();

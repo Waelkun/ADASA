@@ -17,7 +17,7 @@ const TABS: { id: TabId; icon: React.ElementType; key: DictKey }[] = [
 ];
 
 /** springy overshoot easing (iOS-like) */
-const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+const SPRING = "cubic-bezier(0.16, 1, 0.3, 1)";
 const ANIM_MS = 260;
 /** px of movement before a press becomes a drag */
 const DRAG_SLOP = 6;
@@ -180,7 +180,7 @@ export function BottomNav() {
 
   return (
     <nav aria-label="Main navigation" className="fixed bottom-0 inset-x-0 z-40">
-      <div className="mx-auto max-w-md px-3 sm:px-4 pb-[var(--dock-bottom-offset)]">
+      <div className="mx-auto max-w-md md:max-w-lg px-3 sm:px-4 pb-[var(--dock-bottom-offset)]">
         {/* centered group: glass capsule + separate + button (8px gap, same height) */}
         <div className="flex items-center gap-2">
           <div

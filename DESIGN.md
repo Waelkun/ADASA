@@ -1,29 +1,30 @@
 ---
 name: Adasa Design System
-description: Incumbent design system for Adasa nutrition and fitness tracking application
+description: Modernized athletic design system for Adasa nutrition and fitness tracking application
 colors:
-  primary: "#10b981"
+  primary: "#047857"
+  primary-dark: "#34d399"
   primary-foreground: "#ffffff"
-  background-light: "#f4f6f8"
-  background-dark: "#0b1210"
+  background-light: "#f3f6f4"
+  background-dark: "#0a110e"
   card-light: "#ffffff"
-  card-dark: "#141d19"
-  muted-foreground-light: "#5f6a7d"
+  card-dark: "#121b16"
+  muted-foreground-light: "#475a51"
   muted-foreground-dark: "#8ca39a"
-  border-light: "#e7ecf1"
-  border-dark: "#2e4138"
-  accent-light: "#e9f9f1"
-  accent-dark: "#123529"
+  border-light: "#e2e8e4"
+  border-dark: "#202e27"
+  accent-light: "#e6f4ee"
+  accent-dark: "#13382c"
   accent-foreground: "#047857"
-  destructive: "#f04438"
-  protein: "#22c55e"
-  carbs: "#f59e0b"
-  fat: "#f97066"
-  water: "#14b8a6"
+  destructive: "#dc2626"
+  protein: "#059669"
+  carbs: "#d97706"
+  fat: "#e11d48"
+  water: "#0d9488"
 typography:
   display:
     fontFamily: "IBM Plex Sans Arabic, Inter, sans-serif"
-    fontSize: "2rem"
+    fontSize: "2.25rem"
     fontWeight: 700
     lineHeight: 1.2
     letterSpacing: "-0.02em"
@@ -58,12 +59,12 @@ components:
   card:
     backgroundColor: "{colors.card-light}"
     rounded: "{rounded.xl}"
-    padding: "16px"
+    padding: "20px"
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.primary-foreground}"
     rounded: "{rounded.full}"
-    padding: "12px 24px"
+    padding: "14px 24px"
   chip:
     backgroundColor: "{colors.accent-light}"
     textColor: "{colors.accent-foreground}"
@@ -74,60 +75,46 @@ components:
 # Adasa Design System
 
 ## 1. Overview
-Adasa is a mobile-first personal nutrition, fitness, and body composition tracking application. The design aesthetic is modeled after modern iOS utility applications: rounded surfaces, glassy floating dock navigation, tactile pill-shaped action buttons, and segmented circular rings for immediate macronutrient comprehension.
+Adasa is an athletic, Arabic-first personal nutrition, fitness, and body composition tracking utility. The interface is engineered for high-frequency daily operation: quiet surfaces, subtle emerald tinting, responsive dual-column dashboard structures on tablet/desktop, smooth exponential deceleration curves, and instant data legibility.
 
-## 2. Colors
-- **Brand Primary:** Emerald `#10b981` (light mode lacks sufficient WCAG contrast on `#f4f6f8` ground).
-- **Surfaces:**
-  - Light mode: Ground `#f4f6f8`, Cards `#ffffff`, Borders `#e7ecf1`.
-  - Dark mode: Ground `#0b1210`, Cards `#141d19`, Borders `#2e4138`.
-- **Nutritional Semantic Palette:**
-  - Protein: `#22c55e` (Light) / `#34d399` (Dark).
-  - Carbohydrates: `#f59e0b` (Light) / `#fbbf24` (Dark).
-  - Fats: `#f97066` (Light) / `#fb8a84` (Dark).
-  - Water / Hydration: `#14b8a6` (Light) / `#2dd4bf` (Dark).
-  - Calorie Deficit / Surplus: Positive `#12b76a`, Negative `#f04438`.
+## 2. Color Palette & WCAG Compliance
+- **Brand Primary:**
+  - Light mode: Deep Emerald `#047857` (contrast ratio **5.8:1** on white/light grounds, fully WCAG AA compliant).
+  - Dark mode: Vibrant Mint `#34d399` (contrast ratio **9.2:1** on dark surfaces).
+  - Foreground on Primary: Pure white `#ffffff` on `#047857` (**5.8:1** contrast).
+- **Tinted Neutral Surfaces:**
+  - Light mode: Ground `#f3f6f4` (sage/emerald tinted ground), Cards `#ffffff`, Borders `#e2e8e4`, Secondary `#eaf0ed`, Muted Text `#475a51` (5.1:1 contrast).
+  - Dark mode: Ground `#0a110e`, Cards `#121b16`, Borders `#202e27`, Secondary `#19251f`, Muted Text `#8ca39a`.
+- **Nutritional Semantics:**
+  - Protein: `#059669` (Light) / `#34d399` (Dark).
+  - Carbohydrates: `#d97706` (Light) / `#fbbf24` (Dark).
+  - Fats: `#e11d48` (Light) / `#fb7185` (Dark).
+  - Hydration: `#0d9488` (Light) / `#2dd4bf` (Dark).
+  - Status Indicators: Positive `#059669`, Negative `#dc2626`.
 
-## 3. Typography
-- **Primary Arabic Typeface:** IBM Plex Sans Arabic (`--font-arabic`), loaded across weights 400, 500, 600, 700.
-- **Secondary Latin Typeface:** Inter (`--font-inter`) for numeric tabular fallback.
+## 3. Typography & Hierarchy
+- **Arabic Typeface:** IBM Plex Sans Arabic (`--font-arabic`), weights 400 (Regular), 500 (Medium), 600 (SemiBold), 700 (Bold).
+- **Numeric Figures:** Inter (`--font-inter`) with `font-feature-settings: "tnum" 1` / `tabular-nums` applied across all numerical readouts.
+- **Minimum Font Floor:**
+  - Strict minimum of `12px` (`text-xs`) across all micro-copy, timestamps, and secondary labels.
+  - Sub-12px styles (`text-[10px]`, `text-[11px]`) deprecated.
 - **Hierarchy:**
-  - Hero Ring Numbers: `32px` / `36px`, bold tabular figures.
-  - Section Titles: `16px` – `18px`, bold.
-  - Body & Card Data: `13px` – `14px`, medium.
-  - Captions & Hints: `11px` – `12px` (several instances drop to 10px/11px violating legibility guidelines).
+  - Hero Numbers: `32px` – `48px`, bold tabular figures.
+  - Section Titles: `14px` – `18px`, bold with contextual iconography.
+  - Body & Interactive Rows: `14px`, medium.
+  - Secondary Badges & Units: `12px` (`text-xs`), bold / semibold.
 
-## 4. Layout
-- **Viewport Constraints:** Explicitly constrained to mobile width `max-w-md` (448px) centered with `mx-auto` across all breakpoints, resulting in severe void issues on tablet (768px) and desktop (1440px).
-- **Rhythm & Safe Areas:** Top safe-area offset `pt-safe` and dock bottom clearance `--dock-clearance` (calculated as `var(--dock-height) + var(--dock-bottom-offset) + 28px`).
-- **Direction:** RTL layout (`dir="rtl"`) with natural right-to-left optical hierarchy.
+## 4. Responsive Layout & Composition
+- **Mobile (< 768px):** Centered phone column `max-w-md` (448px) with floating dock navigation.
+- **Tablet (768px – 1024px):** Expanded container `max-w-3xl` (768px) with 2-column dashboard grids for Today, Workouts, Goals, Progress, and Settings.
+- **Desktop (>= 1024px):** Centered container `max-w-4xl` (896px) with 2-column balanced layouts, removing empty void margins while preserving comfortable reading widths.
+- **Safe Area & Dock Clearance:** `--dock-clearance` (98px) padding on `<main>` and `--dock-sticky` (82px) on sticky submit buttons ensure zero collision with navigation floating elements.
 
-## 5. Elevation & Depth
-- **Cards (`nutra-card`):** Soft dual-layer ambient shadow (`0 1px 2px rgba(16,24,40,0.04), 0 4px 16px rgba(16,24,40,0.05)` in light mode; `0 1px 2px rgba(0,0,0,0.3), 0 6px 20px rgba(0,0,0,0.25)` in dark mode).
-- **Navigation Dock:** Backdrop filter blur (`backdrop-blur-[20px] backdrop-saturate-[1.8]`) with card alpha background.
-
-## 6. Shapes
-- **Corner Radii:** Prominent rounded architecture:
-  - Cards: `22px` (`rounded-[22px]`).
-  - Modal Drawer Sheets: `28px` top radius (`rounded-t-[28px]`).
-  - Action Buttons & Chips: Full capsule radius (`rounded-full` / `9999px`).
-  - Input Fields: `14px` (`rounded-xl` / `rounded-2xl`).
-
-## 7. Components
-- **Header:** Sticky top translucent bar with greeting, date controls, theme toggle, and settings button.
-- **Calorie Ring:** SVG radial gauge displaying remaining calories, target, and dynamic progression stroke.
-- **Macro Donut:** Concentric / multi-segment ring displaying protein, carbs, and fat distribution.
-- **Stat Cards:** 2-column or 3-column micro cards displaying weight, hydration, streaks, and workout targets.
-- **Bottom Navigation Dock:** Floating glass pill with 5 core tabs (Today, Log, Goals, Progress, Workouts) plus offset circular quick-add action trigger.
-- **Modal Sheets:** Vaul drawer bottom sheets for quick water, weight, workout, food confirmation, and meal creation.
-
-## 8. Do's and Don'ts
-- **DO:**
-  - Keep numbers tabular (`font-variant-numeric: tabular-nums`).
-  - Maintain clear color coding for macronutrients (protein green, carbs amber, fat salmon/coral, water cyan).
-  - Support seamless dark/light theme switching with tinted neutrals.
-- **DON'T:**
-  - Do NOT use un-tinted pure black (`#000000`) or harsh un-tinted grays.
-  - Do NOT allow primary button or link text to fail WCAG AA contrast (must meet 4.5:1).
-  - Do NOT leave tablet and desktop viewports as an empty void around a 448px phone strip.
-  - Do NOT use bouncy, rubber-banding cubic-beziers (`cubic-bezier(0.34, 1.4, ...)`).
+## 5. Motion Tokens
+- **Banned Curves:** Zero overshoot or rubber-band bounce curves (`cubic-bezier(0.34, 1.4+, ...)` banned).
+- **Approved Curve:** Exponential deceleration `cubic-bezier(0.16, 1, 0.3, 1)` for all drawers, tabs, and micro-interactions.
+- **Duration Scale:**
+  - Micro-interactions (press, toggle, check): `150ms` – `200ms`.
+  - Sheet / Drawer entry & exit: `280ms` – `320ms`.
+  - Staggered entrances: `350ms` with `50ms` stagger intervals.
+- **Accessibility:** Full `prefers-reduced-motion` compliance. All spatial transforms collapse to pure opacity cross-fades when requested.

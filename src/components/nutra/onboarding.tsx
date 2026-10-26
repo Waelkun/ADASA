@@ -87,8 +87,8 @@ export function OnboardingScreen({ profile }: { profile: Profile }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
-      <div className="mx-auto w-full max-w-md flex-1 flex flex-col px-6 pt-safe pb-[max(env(safe-area-inset-bottom),24px)]">
+    <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center p-0 md:p-8 overflow-y-auto">
+      <div className="mx-auto w-full max-w-md flex-1 md:flex-initial flex flex-col px-6 pt-safe pb-[max(env(safe-area-inset-bottom),24px)] md:p-8 md:rounded-[32px] md:bg-card md:border md:border-border/60 md:shadow-2xl md:shadow-primary/5">
         {/* step announcement for assistive technologies */}
         <div className="sr-only" role="status" aria-live="polite">
           {step === 0 ? t("onb_step_1") : step === 1 ? t("onb_step_2") : t("onb_step_3")}

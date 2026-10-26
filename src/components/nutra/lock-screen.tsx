@@ -164,8 +164,8 @@ export function LockScreen({ name = "" }: { name?: string }) {
   };
 
   return (
-    <div className="fixed inset-0 z-40 bg-background flex flex-col overflow-y-auto">
-      <div className="mx-auto w-full max-w-md flex-1 flex flex-col items-center justify-center gap-5 px-6 py-10 text-center">
+    <div className="fixed inset-0 z-40 bg-background flex flex-col items-center justify-center p-4 md:p-8 overflow-y-auto">
+      <div className="mx-auto w-full max-w-md flex flex-col items-center justify-center gap-5 px-6 py-8 text-center md:p-10 md:rounded-[32px] md:bg-card md:border md:border-border/60 md:shadow-2xl md:shadow-primary/5">
         {/* Logo and Lock icon */}
         <div className="relative nutra-anim-in">
           <img

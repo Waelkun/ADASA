@@ -171,7 +171,9 @@ export function GoalsScreen() {
         </h1>
       </div>
 
-      <GoalRow
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+        <div className="flex flex-col gap-3">
+          <GoalRow
         icon={<Flame className="size-5 text-negative" />}
         label={`${t("kcal")} · ${t("logged_today")}`}
         valueText={nf(totals.kcal)}
@@ -312,9 +314,11 @@ export function GoalsScreen() {
           <p className="text-xs text-muted-foreground text-center mt-1.5">{t("no_changes_to_save")}</p>
         )}
       </section>
+        </div>
 
-      {/* macro split editor (kcal from macros + percent ↔ grams) — base goal */}
-      <MacroSplitEditor
+        <div className="flex flex-col gap-4">
+          {/* macro split editor (kcal from macros + percent ↔ grams) — base goal */}
+          <MacroSplitEditor
         kcalGoal={profile.kcalGoalBase ?? profile.kcalGoal}
         proteinG={profile.proteinG}
         carbsG={profile.carbsG}
@@ -324,12 +328,14 @@ export function GoalsScreen() {
       {/* calorie calculator (Mifflin-St Jeor) */}
       <CalorieCalculator profile={profile} />
 
-      {/* calorie zigzag — always on the BASE target */}
-      <ZigzagPlanCard
-        baseKcal={profile.kcalGoalBase ?? profile.kcalGoal}
-        plan={profile.zigzagPlan ?? null}
-        start={profile.zigzagStart ?? null}
-      />
+        {/* calorie zigzag — always on the BASE target */}
+        <ZigzagPlanCard
+          baseKcal={profile.kcalGoalBase ?? profile.kcalGoal}
+          plan={profile.zigzagPlan ?? null}
+          start={profile.zigzagStart ?? null}
+        />
+        </div>
+      </div>
     </div>
   );
 }

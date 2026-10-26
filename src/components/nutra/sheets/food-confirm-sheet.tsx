@@ -263,7 +263,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
                 <span className="text-xs font-bold text-foreground">
                   {t("per_100g")}
                 </span>
-                <span className="text-[11px] text-muted-foreground font-medium">
+                <span className="text-xs text-muted-foreground font-medium">
                   ({t("edit")} السعرات والماكروز)
                 </span>
               </div>
@@ -280,7 +280,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
               <>
                 <div className="grid grid-cols-4 gap-2">
                   <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-bold text-primary text-center leading-normal">
+                    <span className="text-xs font-bold text-primary text-center leading-normal">
                       {t("kcal")}
                     </span>
                     <NumInput
@@ -299,7 +299,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-bold text-[var(--protein)] text-center leading-normal">
+                    <span className="text-xs font-bold text-[var(--protein)] text-center leading-normal">
                       {t("protein")}
                     </span>
                     <NumInput
@@ -318,7 +318,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-bold text-[var(--carbs-text)] text-center leading-normal">
+                    <span className="text-xs font-bold text-[var(--carbs-text)] text-center leading-normal">
                       {t("carbs")}
                     </span>
                     <NumInput
@@ -337,7 +337,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-bold text-[var(--fat)] text-center leading-normal">
+                    <span className="text-xs font-bold text-[var(--fat)] text-center leading-normal">
                       {t("fat")}
                     </span>
                     <NumInput
@@ -371,7 +371,7 @@ function FoodForm({ food, onClose }: { food: PendingFood; onClose: () => void })
                         setPer100((prev) => ({ ...prev, kcal: derivedKcal }));
                         toast.success(`تم تعديل السعرات إلى ${derivedKcal}`);
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground font-bold shrink-0 text-[11px] active:scale-95 transition-transform shadow-sm"
+                      className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground font-bold shrink-0 text-xs active:scale-95 transition-transform shadow-sm"
                     >
                       تصحيح السعرات
                     </button>

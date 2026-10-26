@@ -281,8 +281,8 @@ function AppShell() {
     <div className="min-h-dvh bg-background flex flex-col">
       {splash}
       {/* header */}
-      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-xl pt-safe">
-        <div className="mx-auto max-w-md px-4 h-16 flex items-center gap-2">
+      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-xl border-b border-border/40 pt-safe">
+        <div className="mx-auto max-w-md md:max-w-3xl lg:max-w-4xl px-4 md:px-6 h-16 flex items-center gap-3">
           <h1 className="text-base font-bold truncate flex-1">{headerTitle}</h1>
           <button
             aria-label={theme === "dark" ? t("switch_to_light") : t("switch_to_dark")}
@@ -306,7 +306,7 @@ function AppShell() {
       </header>
 
       {/* screens */}
-      <main className="flex-1 mx-auto w-full max-w-md px-4 pb-[var(--dock-clearance)]">
+      <main className="flex-1 mx-auto w-full max-w-md md:max-w-3xl lg:max-w-4xl px-4 md:px-6 pb-[var(--dock-clearance)]">
         <div key={tab} className="nutra-anim-in">
           {tab === "today" && <TodayScreen />}
           {tab === "log" && (

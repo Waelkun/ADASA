@@ -126,132 +126,136 @@ export function TodayScreen() {
         )}
       </div>
 
-      {/* hero calorie card */}
-      <section className="nutra-card p-6 flex flex-col items-center" aria-label={t("macros")}>
-        {isLoading ? (
-          <Skeleton className="size-[220px] rounded-full" />
-        ) : (
-          <CalorieRing key={totals.kcal} eaten={totals.kcal} goal={profile?.kcalGoal ?? 2100} />
-        )}
-        <div className="mt-5 w-full">
-          <MacroBar protein={totals.protein} carbs={totals.carbs} fat={totals.fat} />
-          <div className="mt-2 grid grid-cols-3 text-center text-xs font-medium text-muted-foreground leading-normal">
-            <span>{t("protein")} {nf(totals.protein, 1)}{t("grams")}</span>
-            <span>{t("carbs")} {nf(totals.carbs, 1)}{t("grams")}</span>
-            <span>{t("fat")} {nf(totals.fat, 1)}{t("grams")}</span>
-          </div>
-        </div>
-      </section>
-
-      {/* macro donut + workout status */}
-      <section className="nutra-card p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold">{t("macros")}</h2>
-          <button
-            onClick={() => setTab("progress")}
-            className="text-primary text-xs font-semibold flex items-center gap-0.5 min-h-[36px]"
-          >
-            {t("tab_progress")}
-            <ChevronLeft className="size-3.5 rtl:rotate-0 ltr:rotate-180" />
-          </button>
-        </div>
-        <MacroDonut protein={totals.protein} carbs={totals.carbs} fat={totals.fat} />
-        <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
-          {today?.workoutToday ? (
-            <span className="nutra-chip bg-positive/12 text-positive gap-1">
-              <Dumbbell className="size-3.5" />
-              {t("trained_today")}
-            </span>
-          ) : (
-            <button
-              onClick={() => openSheet("workout", { workoutDate: selectedDay ?? undefined })}
-              className="nutra-chip bg-secondary text-secondary-foreground gap-1 hover:bg-accent transition-colors"
-            >
-              <Dumbbell className="size-3.5" />
-              {t("log_workout")}
-            </button>
-          )}
-          {today?.weightToday && (
-            <span className="text-xs font-semibold text-muted-foreground tabular">
-              ⚖️ {nf(today.weightToday.weightKg, 1)} {t("kg")}
-            </span>
-          )}
-        </div>
-      </section>
-
-      {/* water card */}
-      <section className="nutra-card p-5" aria-label={t("water")}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold flex items-center gap-2">
-            <GlassWater className="size-4 text-water" />
-            {t("water")}
-          </h2>
-          <span className="text-xs font-semibold tabular text-muted-foreground">
-            {nf(waterTotal / 1000, 2)} / {nf(waterGoal / 1000, 1)} {t("liter")}
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          {/* mini water ring */}
-          <div
-            role="progressbar"
-            aria-valuenow={Math.round(waterPct * 100)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuetext={`${nf(waterTotal / 1000, 2)} ${t("of")} ${nf(waterGoal / 1000, 1)} ${t("liter")}`}
-            aria-label={t("water")}
-            className="relative size-20 shrink-0"
-          >
-            <svg viewBox="0 0 80 80" className="-rotate-90 size-20">
-              <circle cx="40" cy="40" r="32" fill="none" strokeWidth="9" className="stroke-secondary" />
-              <circle
-                cx="40"
-                cy="40"
-                r="32"
-                fill="none"
-                strokeWidth="9"
-                strokeLinecap="round"
-                stroke="var(--water)"
-                strokeDasharray={2 * Math.PI * 32}
-                strokeDashoffset={2 * Math.PI * 32 * (1 - waterPct)}
-                style={{ transition: "stroke-dashoffset 600ms ease-out" }}
-              />
-            </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-sm font-bold tabular">
-              {Math.round(waterPct * 100)}%
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2 flex-1">
-            {[
-              { ml: 250, label: "+250" },
-              { ml: 500, label: "+500" },
-              { ml: 1000, label: `+1 ${t("liter")}` },
-            ].map((b) => (
-              <button
-                key={b.ml}
-                onClick={() =>
-                  addWater.mutate(b.ml, {
-                    onError: () => toast.error(t("error_toast")),
-                  })
-                }
-                className="h-11 px-4 rounded-full bg-water/10 text-water text-sm font-bold tabular hover:bg-water/20 active:scale-95 transition-all"
-              >
-                {b.label}
-              </button>
-            ))}
-            {lastWaterId && (
-              <button
-                onClick={() => undoWater.mutate(lastWaterId)}
-                className="h-11 px-4 rounded-full bg-secondary text-muted-foreground text-sm font-semibold hover:text-foreground transition-colors"
-              >
-                {t("undo")}
-              </button>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+        <div className="flex flex-col gap-4">
+          {/* hero calorie card */}
+          <section className="nutra-card p-6 flex flex-col items-center" aria-label={t("macros")}>
+            {isLoading ? (
+              <Skeleton className="size-[220px] rounded-full" />
+            ) : (
+              <CalorieRing key={totals.kcal} eaten={totals.kcal} goal={profile?.kcalGoal ?? 2100} />
             )}
-          </div>
-        </div>
-      </section>
+            <div className="mt-5 w-full">
+              <MacroBar protein={totals.protein} carbs={totals.carbs} fat={totals.fat} />
+              <div className="mt-2 grid grid-cols-3 text-center text-xs font-medium text-muted-foreground leading-normal">
+                <span>{t("protein")} {nf(totals.protein, 1)}{t("grams")}</span>
+                <span>{t("carbs")} {nf(totals.carbs, 1)}{t("grams")}</span>
+                <span>{t("fat")} {nf(totals.fat, 1)}{t("grams")}</span>
+              </div>
+            </div>
+          </section>
 
-      {/* meals list */}
-      <section aria-label={t("meals")}>
+          {/* macro donut + workout status */}
+          <section className="nutra-card p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold">{t("macros")}</h2>
+              <button
+                onClick={() => setTab("progress")}
+                className="text-primary text-xs font-semibold flex items-center gap-0.5 min-h-[36px]"
+              >
+                {t("tab_progress")}
+                <ChevronLeft className="size-3.5 rtl:rotate-0 ltr:rotate-180" />
+              </button>
+            </div>
+            <MacroDonut protein={totals.protein} carbs={totals.carbs} fat={totals.fat} />
+            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+              {today?.workoutToday ? (
+                <span className="nutra-chip bg-positive/12 text-positive gap-1">
+                  <Dumbbell className="size-3.5" />
+                  {t("trained_today")}
+                </span>
+              ) : (
+                <button
+                  onClick={() => openSheet("workout", { workoutDate: selectedDay ?? undefined })}
+                  className="nutra-chip bg-secondary text-secondary-foreground gap-1 hover:bg-accent transition-colors"
+                >
+                  <Dumbbell className="size-3.5" />
+                  {t("log_workout")}
+                </button>
+              )}
+              {today?.weightToday && (
+                <span className="text-xs font-semibold text-muted-foreground tabular">
+                  ⚖️ {nf(today.weightToday.weightKg, 1)} {t("kg")}
+                </span>
+              )}
+            </div>
+          </section>
+
+          {/* water card */}
+          <section className="nutra-card p-5" aria-label={t("water")}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold flex items-center gap-2">
+                <GlassWater className="size-4 text-water" />
+                {t("water")}
+              </h2>
+              <span className="text-xs font-semibold tabular text-muted-foreground">
+                {nf(waterTotal / 1000, 2)} / {nf(waterGoal / 1000, 1)} {t("liter")}
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
+              {/* mini water ring */}
+              <div
+                role="progressbar"
+                aria-valuenow={Math.round(waterPct * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuetext={`${nf(waterTotal / 1000, 2)} ${t("of")} ${nf(waterGoal / 1000, 1)} ${t("liter")}`}
+                aria-label={t("water")}
+                className="relative size-20 shrink-0"
+              >
+                <svg viewBox="0 0 80 80" className="-rotate-90 size-20">
+                  <circle cx="40" cy="40" r="32" fill="none" strokeWidth="9" className="stroke-secondary" />
+                  <circle
+                    cx="40"
+                    cy="40"
+                    r="32"
+                    fill="none"
+                    strokeWidth="9"
+                    strokeLinecap="round"
+                    stroke="var(--water)"
+                    strokeDasharray={2 * Math.PI * 32}
+                    strokeDashoffset={2 * Math.PI * 32 * (1 - waterPct)}
+                    style={{ transition: "stroke-dashoffset 600ms ease-out" }}
+                  />
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-sm font-bold tabular">
+                  {Math.round(waterPct * 100)}%
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2 flex-1">
+                {[
+                  { ml: 250, label: "+250" },
+                  { ml: 500, label: "+500" },
+                  { ml: 1000, label: `+1 ${t("liter")}` },
+                ].map((b) => (
+                  <button
+                    key={b.ml}
+                    onClick={() =>
+                      addWater.mutate(b.ml, {
+                        onError: () => toast.error(t("error_toast")),
+                      })
+                    }
+                    className="h-11 px-4 rounded-full bg-water/10 text-water text-sm font-bold tabular hover:bg-water/20 active:scale-95 transition-all"
+                  >
+                    {b.label}
+                  </button>
+                ))}
+                {lastWaterId && (
+                  <button
+                    onClick={() => undoWater.mutate(lastWaterId)}
+                    className="h-11 px-4 rounded-full bg-secondary text-muted-foreground text-sm font-semibold hover:text-foreground transition-colors"
+                  >
+                    {t("undo")}
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          {/* meals list */}
+          <section aria-label={t("meals")}>
         <div className="flex items-center justify-between px-1 mb-3">
           <h2 className="text-sm font-bold">{t("meals")}</h2>
           <span className="text-xs font-semibold text-muted-foreground tabular">
@@ -387,6 +391,8 @@ export function TodayScreen() {
           </div>
         )}
       </section>
+        </div>
+      </div>
 
       {/* edit-grams sheet */}
       <EditGramsSheet log={editingLog} onClose={() => setEditingLog(null)} />

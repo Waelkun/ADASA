@@ -155,8 +155,9 @@ export function WorkoutsScreen() {
         </div>
       </section>
 
-      {/* calendar */}
-      <section className="nutra-card p-4" aria-label={t("workout_calendar")}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+        {/* calendar */}
+        <section className="nutra-card p-4" aria-label={t("workout_calendar")}>
         <div className="flex items-center justify-between mb-3">
           <button
             aria-label={t("prev_month")}
@@ -261,6 +262,7 @@ export function WorkoutsScreen() {
           })}
         </ul>
       </section>
+      </div>
     </div>
   );
 }
