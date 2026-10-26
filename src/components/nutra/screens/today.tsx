@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Flame, GlassWater, Dumbbell, Trash2, Sparkles, Plus, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
+import { Flame, GlassWater, Dumbbell, Trash2, Sparkles, Plus, ChevronLeft, ChevronRight, Undo2, Target } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useToday, useDeleteFoodLog, useAddFoodLog, useWater, useAddWater, useUndoWater, localDayStr } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { CalorieRing } from "../calorie-ring";
-import { MacroBar, MacroDonut } from "../macro-donut";
+import { MacroBar } from "../macro-donut";
 import { ProductThumb } from "../product-thumb";
 import { MEAL_TYPES, type MealType, type FoodLog } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -145,19 +145,102 @@ export function TodayScreen() {
             </div>
           </section>
 
-          {/* macro donut + workout status */}
+          {/* macro target breakdown + workout status */}
           <section className="nutra-card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold">{t("macros")}</h2>
+            <div className="flex items-center justify-between mb-3.5">
+              <h2 className="text-sm font-bold flex items-center gap-2">
+                <Target className="size-4 text-primary" />
+                {t("macros")}
+              </h2>
               <button
                 onClick={() => setTab("progress")}
-                className="text-primary text-xs font-semibold flex items-center gap-0.5 min-h-[36px]"
+                className="text-primary text-xs font-semibold flex items-center gap-0.5 min-h-[36px] hover:underline"
               >
                 {t("tab_progress")}
                 <ChevronLeft className="size-3.5 rtl:rotate-0 ltr:rotate-180" />
               </button>
             </div>
-            <MacroDonut protein={totals.protein} carbs={totals.carbs} fat={totals.fat} />
+
+            <div className="grid grid-cols-3 gap-2.5">
+              {/* Protein */}
+              <div className="p-3 rounded-2xl bg-secondary/50 border border-border/40 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--protein)]">{t("protein")}</span>
+                  <span className="text-xs tabular text-muted-foreground font-semibold">
+                    {profile?.proteinG ? Math.round((totals.protein / profile.proteinG) * 100) : 0}%
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1 flex-wrap">
+                  <span className="nutra-hero-num text-base md:text-lg tabular">{nf(totals.protein, totals.protein % 1 ? 1 : 0)}</span>
+                  {profile?.proteinG && (
+                    <span className="text-xs text-muted-foreground tabular">/ {nf(profile.proteinG)}</span>
+                  )}
+                  <span className="text-xs text-muted-foreground font-medium">{t("grams")}</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(profile?.proteinG ? (totals.protein / profile.proteinG) * 100 : 0, 100)}%`,
+                      backgroundColor: "var(--protein)",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Carbs */}
+              <div className="p-3 rounded-2xl bg-secondary/50 border border-border/40 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--carbs-text)]">{t("carbs")}</span>
+                  <span className="text-xs tabular text-muted-foreground font-semibold">
+                    {profile?.carbsG ? Math.round((totals.carbs / profile.carbsG) * 100) : 0}%
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1 flex-wrap">
+                  <span className="nutra-hero-num text-base md:text-lg tabular">{nf(totals.carbs, totals.carbs % 1 ? 1 : 0)}</span>
+                  {profile?.carbsG && (
+                    <span className="text-xs text-muted-foreground tabular">/ {nf(profile.carbsG)}</span>
+                  )}
+                  <span className="text-xs text-muted-foreground font-medium">{t("grams")}</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(profile?.carbsG ? (totals.carbs / profile.carbsG) * 100 : 0, 100)}%`,
+                      backgroundColor: "var(--carbs)",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Fat */}
+              <div className="p-3 rounded-2xl bg-secondary/50 border border-border/40 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--fat)]">{t("fat")}</span>
+                  <span className="text-xs tabular text-muted-foreground font-semibold">
+                    {profile?.fatG ? Math.round((totals.fat / profile.fatG) * 100) : 0}%
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1 flex-wrap">
+                  <span className="nutra-hero-num text-base md:text-lg tabular">{nf(totals.fat, totals.fat % 1 ? 1 : 0)}</span>
+                  {profile?.fatG && (
+                    <span className="text-xs text-muted-foreground tabular">/ {nf(profile.fatG)}</span>
+                  )}
+                  <span className="text-xs text-muted-foreground font-medium">{t("grams")}</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(profile?.fatG ? (totals.fat / profile.fatG) * 100 : 0, 100)}%`,
+                      backgroundColor: "var(--fat)",
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
               {today?.workoutToday ? (
                 <span className="nutra-chip bg-positive/12 text-positive gap-1">

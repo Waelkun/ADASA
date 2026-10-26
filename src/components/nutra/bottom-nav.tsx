@@ -191,12 +191,12 @@ export function BottomNav() {
             onPointerCancel={endPointer}
             onLostPointerCapture={endPointer}
             style={{ touchAction: "none" }}
-            className="relative flex-1 min-w-0 h-14 rounded-full bg-card/70 backdrop-blur-[20px] backdrop-saturate-[1.8] border border-border shadow-[0_10px_32px_rgba(16,24,40,0.14)] overflow-hidden"
+            className="relative flex-1 min-w-0 h-14 rounded-full bg-card/80 backdrop-blur-[20px] backdrop-saturate-[1.8] border border-border/60 shadow-[0_8px_24px_rgba(16,24,40,0.08)] overflow-hidden"
           >
-            {/* sliding active bubble (spring) — physical x, explicit left:0 anchor */}
+            {/* sliding active bubble — physical x, explicit left:0 anchor */}
             <span
               aria-hidden
-              className="absolute top-1.5 bottom-1.5 left-0 rounded-full bg-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_8px_rgba(16,24,40,0.08)]"
+              className="absolute top-1.5 bottom-1.5 left-0 rounded-full bg-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_8px_rgba(16,24,40,0.06)]"
               style={{
                 width: `${bubble.w}px`,
                 zIndex: 0,
@@ -242,7 +242,7 @@ export function BottomNav() {
           <button
             onClick={() => openSheet("quick-add")}
             aria-label={t("quick_add")}
-            className="size-14 shrink-0 rounded-full bg-primary/95 backdrop-blur-[20px] backdrop-saturate-[1.8] text-primary-foreground border border-white/25 shadow-[0_10px_28px_rgba(16,185,129,0.4)] grid place-items-center active:scale-95 transition-transform"
+            className="size-14 shrink-0 rounded-full bg-primary backdrop-blur-[20px] backdrop-saturate-[1.8] text-primary-foreground border border-white/20 shadow-[0_6px_20px_rgba(4,120,87,0.3)] dark:shadow-[0_6px_20px_rgba(52,211,153,0.2)] grid place-items-center active:scale-95 transition-transform"
           >
             <Plus className="size-6" strokeWidth={2.5} />
           </button>
