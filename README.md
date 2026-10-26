@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  An intelligent, Arabic-first nutrition and fitness tracking web platform. Unlike generic Western calorie counters, Adasa is purpose-built with native Arabic typography, cultural dish context, and true RTL ergonomics, combined with multimodal Vision AI for automatic barcode, nutrition label, and food plate recognition.
+  An intelligent, modern nutrition and fitness tracking web application. Engineered with high-craft responsive ergonomics across desktop, tablet, and mobile, native dark-mode aesthetics, and multimodal Vision AI for automatic nutrition label, barcode, and food recognition.
 </p>
 
 ---
@@ -31,30 +31,31 @@
 
 ---
 
-## 📸 Product Showcase & Screenshots
+## 📸 Product Gallery (Dark Mode & English UI)
 
-### 1. Daily Nutrition Dashboard & Mobile Experience
-*Interactive calorie rings, macronutrient breakdown (protein, carbs, fats), meal categorization, and one-tap hydration:*
+### 1. Desktop & Widescreen Experience
+*Interactive calorie rings, macronutrient split (protein, carbs, fat), and metabolic Zigzag caloric cycling:*
 
 <p align="center">
-  <img src="docs/screenshots/adasa-today-dashboard.png" alt="Adasa Today Dashboard (Desktop)" width="58%" />
-  <img src="docs/screenshots/adasa-mobile-view.png" alt="Adasa Today Dashboard (Mobile View)" width="38%" />
+  <img src="docs/screenshots/adasa-today-desktop.png" alt="Adasa Today Dashboard" width="49%" />
+  <img src="docs/screenshots/adasa-goals-cycling.png" alt="Adasa Caloric Cycling Goals" width="49%" />
 </p>
 
-### 2. Intelligent Caloric Cycling & Vision AI Scanning
-*Metabolic Zigzag calorie planning and camera-assisted nutrition label recognition:*
+### 2. Workouts & Vision AI Scanner
+*Muscle group volume tracking alongside camera-assisted nutrition label recognition:*
 
 <p align="center">
-  <img src="docs/screenshots/adasa-goals-cycling.png" alt="Adasa Zigzag Caloric Cycling Goals" width="48%" />
-  <img src="docs/screenshots/adasa-vision-ai-scan.png" alt="Adasa Multimodal Vision AI Scanner" width="48%" />
+  <img src="docs/screenshots/adasa-workouts-desktop.png" alt="Adasa Workouts Tracker" width="49%" />
+  <img src="docs/screenshots/adasa-scan-desktop.png" alt="Adasa Vision AI Scanner Modal" width="49%" />
 </p>
 
-### 3. Strength Workouts & Cloud Portal
-*Dedicated muscle group volume tracking alongside zero-friction Google OAuth sign-in:*
+### 3. Mobile Experience
+*Adaptive mobile layout with floating navigation dock and touch-first logging:*
 
 <p align="center">
-  <img src="docs/screenshots/adasa-workouts.png" alt="Adasa Workout Tracker" width="48%" />
-  <img src="docs/screenshots/adasa-login-en.png" alt="Adasa Cloud Portal" width="48%" />
+  <img src="docs/screenshots/adasa-mobile-today.png" alt="Adasa Mobile Today Dashboard" width="36%" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/screenshots/adasa-mobile-goals.png" alt="Adasa Mobile Goals View" width="36%" />
 </p>
 
 ---
@@ -76,7 +77,7 @@
 
 ```mermaid
 flowchart TD
-    UserClient([Client Browser: Desktop & Mobile PWA]) -->|HTTPS / Next.js 15 App Router| Vercel[Vercel Serverless Platform]
+    UserClient([Client Browser: Desktop, Tablet & Mobile PWA]) -->|HTTPS / Next.js 15 App Router| Vercel[Vercel Serverless Platform]
     Vercel -->|Auth & Data Queries| SupabaseClient[Supabase Client SDK]
     SupabaseClient -->|PostgreSQL + Row Level Security| SupabaseDB[(Supabase PostgreSQL)]
     UserClient -->|Camera Capture / Label Photo| ApiScan[Next.js API Route: /api/scan]
