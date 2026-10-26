@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { kcalSanityOk } from "@/lib/nutrition";
 
 export const runtime = "nodejs";
-export const maxDuration = 45;
+export const maxDuration = 60;
 
 /* ---------- validation schemas ---------- */
 
@@ -41,7 +41,7 @@ function isValidImageDataUrl(v: unknown): v is string {
   return typeof v === "string" && DATA_URL_RE.test(v);
 }
 
-/** strip markdown code fences and extract outermost JSON object */
+/** strip markdown code fences and extract outermost JSON object with robust sanitization */
 function extractJson(text: string): string | null {
   let t = text.trim();
   // Strip reasoning/think tags if present (common in reasoning models)
@@ -51,13 +51,27 @@ function extractJson(text: string): string | null {
   const start = t.indexOf("{");
   const end = t.lastIndexOf("}");
   if (start === -1 || end === -1 || end <= start) return null;
-  return t.slice(start, end + 1);
+  let jsonStr = t.slice(start, end + 1);
+
+  // Robust Sanitization:
+  // 1. If model outputs fractions like "kcal": 1056/250, take the second number (kcal)
+  jsonStr = jsonStr.replace(/:\s*(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/g, ": $2");
+  // 2. Fix European decimals like 4,0 -> 4.0
+  jsonStr = jsonStr.replace(/:\s*(\d+),(\d+)/g, ": $1.$2");
+  // 3. Remove trailing commas before closing braces/brackets
+  jsonStr = jsonStr.replace(/,(\s*[}\]])/g, "$1");
+
+  return jsonStr;
 }
 
 const SYSTEM_PROMPT = `You are an expert clinical nutrition AI and computer vision analyst. Analyze the provided food image(s):
-- If the image contains a Nutrition Facts label (in Arabic or English):
-  * Extract exact numbers as primary ground truth.
-  * If energy is in kJ only, convert to kcal by dividing by 4.184 (rounded to integer).
+- If the image contains a Nutrition Facts label (in German, Arabic, English, French, Spanish, etc.):
+  * Extract exact numbers as primary ground truth. Read table rows top-to-bottom carefully.
+  * MULTILINGUAL GUIDE:
+    - German: "Brennwert" = Calories (take kcal, NOT kJ), "Fett" = Fat, "gesättigte Fettsäuren" = Saturated Fat, "Kohlenhydrate" = Carbs, "Zucker" = Sugar, "Ballaststoffe" = Fiber, "Eiweiß" = Protein, "Salz" = Salt.
+    - French: "Valeur énergétique" = Calories (kcal), "Matières grasses" = Fat, "Glucides" = Carbs, "Protéines" = Protein, "Sel" = Salt.
+    - Arabic: "السعرات" = Calories, "الدهون" = Fat, "الكربوهيدرات" = Carbs, "البروتين" = Protein, "الألياف" = Fiber.
+  * If energy shows kJ/kcal (e.g. 1056/250), return ONLY the kcal number (e.g. 250). NEVER write slashes or expressions.
   * Distinguish "per 100g" / "per 100ml" from "per serving" columns.
 - If it is a prepared meal / restaurant dish / mixed plate:
   * Estimate weight in grams and return in "estimated_weight_g".
@@ -65,7 +79,7 @@ const SYSTEM_PROMPT = `You are an expert clinical nutrition AI and computer visi
   * Set "serving_size_g" to null unless distinct pieces are apparent.
 - If a USER HINT is provided, treat it as TRUSTED ground truth: it overrides visual guesses for the name and weights.
 
-CRITICAL: Return ONLY a raw JSON object (no markdown, no backticks, no comments, no extra text) matching this schema:
+CRITICAL: Return ONLY a raw JSON object (all numbers must be pure numeric floats/ints or null, NEVER expressions like 1056/250) matching this schema:
 {
   "product_name": string or null,
   "brand": string or null,
@@ -151,7 +165,6 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-    const model = process.env.NVIDIA_MODEL || "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
 
     // 4. Validate input payload
     const body = await req.json().catch(() => ({}));
@@ -212,9 +225,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 6. Call NVIDIA API with primary model + automatic high-availability fallback
-    const primaryModel = process.env.NVIDIA_MODEL || "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
-    const fallbackModel = "meta/llama-3.2-11b-vision-instruct";
+    // 6. Call NVIDIA API with primary model + automatic fallback
+    const primaryModel = process.env.NVIDIA_MODEL || "meta/llama-3.2-11b-vision-instruct";
+    const fallbackModel = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
     const modelsToAttempt = primaryModel === fallbackModel
       ? [primaryModel]
       : [primaryModel, fallbackModel];
@@ -225,7 +238,7 @@ export async function POST(req: NextRequest) {
     for (let i = 0; i < modelsToAttempt.length; i++) {
       const activeModel = modelsToAttempt[i];
       const isReasoning = activeModel.includes("reasoning");
-      const timeoutMs = i === 0 ? 18_000 : 20_000;
+      const timeoutMs = 35_000;
 
       const requestPayload: Record<string, any> = {
         model: activeModel,
