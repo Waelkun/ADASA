@@ -79,16 +79,23 @@ export function Splash({ ready, onDone }: { ready: boolean; onDone: () => void }
   }, [ready]);
 
   return (
-    <div aria-hidden className="nutra-splash" style={{ opacity: phase === "out" ? 0 : 1 }}>
-      <div className="nutra-splash-stage" data-p={phase}>
-        <div className="nutra-aperture">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <span key={i} className="blade" style={{ "--i": i } as React.CSSProperties} />
-          ))}
-          <span className="nutra-flash" />
-          <img src="/icons/icon-192.png" alt="" className="nutra-splash-logo" />
+    <div
+      aria-hidden
+      className="fixed inset-0 z-50 bg-[#0a110e] flex items-center justify-center p-6 transition-opacity duration-300"
+      style={{ opacity: phase === "out" ? 0 : 1 }}
+    >
+      <div className="flex flex-col items-center justify-center gap-4 text-center select-none">
+        <div className="relative size-52 sm:size-60 md:size-64 rounded-[36px] overflow-hidden shadow-2xl shadow-black/60 border border-emerald-500/20 bg-[#0e1713]">
+          <video
+            src="/loading-animation.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover pointer-events-none"
+          />
         </div>
-        <p className="nutra-splash-name">عدسة</p>
+        <span className="h-1 w-12 rounded-full bg-emerald-500/50 animate-pulse mt-1" />
       </div>
     </div>
   );

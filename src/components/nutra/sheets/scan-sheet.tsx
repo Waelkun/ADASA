@@ -297,13 +297,20 @@ export function ScanSheet({ onResult }: { onResult: (r: ScanResult, thumb: strin
 
       {/* states */}
       {scan.isPending ? (
-        <div className="py-10 flex flex-col items-center gap-3">
-          <span className="relative size-16 grid place-items-center">
-            <Loader2 className="size-16 text-primary animate-spin" strokeWidth={1.5} />
-            <ScanLine className="size-6 text-primary absolute" />
-          </span>
-          <p className="text-sm font-bold">{t("analyzing")}</p>
-          <p className="text-xs text-muted-foreground">{t("analyzing_hint")}</p>
+        <div className="py-6 flex flex-col items-center gap-3">
+          <div className="relative size-36 sm:size-40 rounded-[28px] overflow-hidden shadow-lg border border-emerald-500/20 bg-[#0e1713]">
+            <video
+              src="/loading-animation.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover pointer-events-none"
+              aria-hidden="true"
+            />
+          </div>
+          <p className="text-sm font-bold mt-1">{t("analyzing")}</p>
+          <p className="text-xs text-muted-foreground text-center max-w-xs">{t("analyzing_hint")}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-2.5">
