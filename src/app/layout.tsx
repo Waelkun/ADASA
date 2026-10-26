@@ -63,6 +63,7 @@ export default function RootLayout({
         />
       </head>
       <body
+        suppressHydrationWarning
         className={`${plexArabic.variable} ${inter.variable} antialiased bg-background text-foreground min-h-dvh`}
       >
         <ThemeProvider

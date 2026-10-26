@@ -212,24 +212,34 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 6. Call NVIDIA API with 40s timeout via AbortController + retry on 503
-    const requestPayload: Record<string, any> = {
-      model,
-      messages: [{ role: "user", content: userContent }],
-      max_tokens: 4096,
-      temperature: 0.6,
-      top_p: 0.95,
-    };
-    if (model.includes("reasoning")) {
-      requestPayload.reasoning_budget = 2048;
-    }
+    // 6. Call NVIDIA API with primary model + automatic high-availability fallback
+    const primaryModel = process.env.NVIDIA_MODEL || "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
+    const fallbackModel = "meta/llama-3.2-11b-vision-instruct";
+    const modelsToAttempt = primaryModel === fallbackModel
+      ? [primaryModel]
+      : [primaryModel, fallbackModel];
 
     let nvidiaRes: globalThis.Response | null = null;
     let lastErrorText = "";
 
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let i = 0; i < modelsToAttempt.length; i++) {
+      const activeModel = modelsToAttempt[i];
+      const isReasoning = activeModel.includes("reasoning");
+      const timeoutMs = i === 0 ? 18_000 : 20_000;
+
+      const requestPayload: Record<string, any> = {
+        model: activeModel,
+        messages: [{ role: "user", content: userContent }],
+        max_tokens: isReasoning ? 4096 : 1024,
+        temperature: isReasoning ? 0.6 : 0.2,
+        top_p: isReasoning ? 0.95 : 0.7,
+      };
+      if (isReasoning) {
+        requestPayload.reasoning_budget = 1024;
+      }
+
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 35_000);
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
         const res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
@@ -250,10 +260,10 @@ export async function POST(req: NextRequest) {
         }
 
         lastErrorText = await res.text().catch(() => "");
-        console.warn(`NVIDIA API attempt ${attempt} returned ${res.status}:`, lastErrorText);
+        console.warn(`NVIDIA API model ${activeModel} returned ${res.status}:`, lastErrorText);
 
-        if ((res.status === 503 || res.status === 429) && attempt < 2) {
-          await new Promise((resolve) => setTimeout(resolve, 1500));
+        if (i < modelsToAttempt.length - 1) {
+          console.warn(`Falling back to ${modelsToAttempt[i + 1]}...`);
           continue;
         }
 
@@ -261,18 +271,11 @@ export async function POST(req: NextRequest) {
         break;
       } catch (fetchErr: any) {
         clearTimeout(timeout);
-        console.error(`NVIDIA API network error on attempt ${attempt}:`, fetchErr);
-        if (attempt < 2) {
-          await new Promise((resolve) => setTimeout(resolve, 1500));
+        console.warn(`NVIDIA API call for ${activeModel} failed:`, fetchErr?.message || fetchErr);
+        if (i < modelsToAttempt.length - 1) {
+          console.warn(`Falling back to ${modelsToAttempt[i + 1]}...`);
           continue;
         }
-        return Response.json(
-          {
-            error: "vision_failed",
-            message: "تعذر الاتصال بخدمة التحليل الذكي (انتهت مهلة الطلب أو خطأ في الشبكة).",
-          },
-          { status: 502 }
-        );
       }
     }
 
